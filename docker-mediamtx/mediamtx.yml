@@ -1,0 +1,48 @@
+###############################################
+# Configuración Principal de MediaMTX
+# (Este archivo se combina con los valores por defecto del servidor)
+###############################################
+
+# Nivel de detalle de los mensajes en la consola de Docker
+# Opciones: debug, info, warn, error
+logLevel: info
+
+###############################################
+# Configuración de WebRTC
+###############################################
+# Asegurarse de que el motor WebRTC (que es el que usas) esté encendido
+webrtc: yes
+
+# El puerto HTTP donde los clientes (emisor y receptor) enviarán su SDP.
+# A este puerto le harás los 'fetch' desde JavaScript.
+webrtcAddress: :8889
+
+# El puerto UDP por el cual los clientes enviarán el video puro.
+webrtcICEUDPMuxAddress: :8189
+
+# --- [ OPCIONAL: IP MANUAL ] ---
+# Si WebRTC falla porque Docker le entrega una IP interna falsa a tus HTML,
+# descomenta la línea de abajo y pon la IP de la máquina de este servidor.
+# (No es necesario si en docker-compose usas network_mode: "host")
+# webrtcAdditionalHosts: [192.168.1.100]
+
+
+###############################################
+# Rutas / Canales (Paths)
+###############################################
+# Esta sección controla los permisos de los streams (canales de video)
+paths:
+  # 'all' significa que estas reglas aplican a cualquier nombre de transmisión.
+  # (Ej: demo-latencia, prueba-1, camara-principal, etc.)
+  all:
+    # ¿Quién puede emitir video a MediaMTX? 
+    # (Déjalo vacío "" para permitir a cualquier persona en tu red local)
+    # Si quieres protegerlo, puedes poner: "usuario:contraseña"
+    publishUser: ""
+    
+    # ¿Quién puede ver el video de MediaMTX?
+    # (Déjalo vacío "" para que cualquiera en tu red local pueda abrir receptor.html)
+    readUser: ""
+
+    # (Opcional) Puedes ejecutar comandos automáticamente cuando alguien empiece a transmitir
+    # runOnPublish: ffmpeg -i rtsp://localhost:$RTSP_PORT/$RTSP_PATH -c copy /ruta/al/disco/grabacion.mp4

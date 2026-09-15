@@ -159,12 +159,13 @@
 
 
 <p class="note">
-  Esta página captura la cámara y espera a que se abra <code>receptor.html</code> en otra pestaña del mismo navegador. La señalización (oferta/respuesta SDP e ICE candidates) viaja por <code>BroadcastChannel</code>, que solo funciona entre pestañas del mismo origen — por eso ambas páginas deben servirse desde el mismo <code>http://localhost</code>. No hay servidor de señalización externo ni STUN/TURN: todo ocurre en tu PC.
+  Esta página captura la cámara y la envía por WebRTC al servidor MediaMTX usando el estándar WHIP. 
+  Asegúrate de cambiar la IP <code>192.168.1.100</code> en el código por la IP real del servidor Docker.
 </p>
 
 <script>
-const CHANNEL_NAME = 'webrtc-local-signal';
-const bc = new BroadcastChannel(CHANNEL_NAME);
+const MEDIAMTX_URL = "http://192.168.1.100:8889"; // CAMBIA ESTO A LA IP DE TU SERVIDOR DOCKER
+const STREAM_NAME = "demo-latencia";
 
 const localVideo = document.getElementById('localVideo');
 
@@ -174,7 +175,6 @@ const containerVR = document.getElementById('videoContainerVR');
 
 vrMode.addEventListener('change', (e) => {
   if (e.target.checked) {
-    // En lugar de display: none, lo ocultamos visualmente para que el navegador no detenga el decode de video
     container2D.style.position = 'absolute';
     container2D.style.opacity = '0';
     container2D.style.pointerEvents = 'none';
@@ -251,11 +251,9 @@ async function start() {
 
   emitting = true;
   stopBtn.disabled = false;
-  setStatus('warn', 'Esperando receptor…');
+  setStatus('warn', 'Conectando a MediaMTX…');
 
-  // Avisa a cualquier receptor.html que ya esté abierto y esperando.
-  console.log('[emisor] enviando sender-ready');
-  bc.postMessage({ type: 'sender-ready' });
+  await createOfferFor();
 }
 
 async function createOfferFor() {
@@ -265,26 +263,67 @@ async function createOfferFor() {
   const track = localStream.getVideoTracks()[0];
   pc.addTrack(track, localStream);
 
-  pc.onicecandidate = e => { if (e.candidate) { bc.postMessage({ type: 'candidate', candidate: e.candidate.toJSON() }); console.log('[emisor] ICE candidate enviado', e.candidate.type); } };
   pc.onconnectionstatechange = () => {
-    console.log('[emisor] connectionState:', pc.connectionState, '| iceConnectionState:', pc.iceConnectionState);
+    console.log('[emisor] connectionState:', pc.connectionState);
     if (pc.connectionState === 'connected') {
-      setStatus('live', 'Transmitiendo');
+      setStatus('live', 'Transmitiendo a MediaMTX');
     } else if (['disconnected','failed','closed'].includes(pc.connectionState)) {
-      setStatus('warn', 'Esperando receptor…');
+      setStatus('warn', 'Desconectado');
     }
   };
 
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
-  console.log('[emisor] enviando oferta SDP');
-  bc.postMessage({ type: 'offer', sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } });
+
+  // Esperar a que los candidatos ICE locales terminen de recolectarse
+  await new Promise((resolve) => {
+    if (pc.iceGatheringState === 'complete') {
+      resolve();
+    } else {
+      const checkState = () => {
+        if (pc.iceGatheringState === 'complete') {
+          pc.removeEventListener('icegatheringstatechange', checkState);
+          resolve();
+        }
+      };
+      pc.addEventListener('icegatheringstatechange', checkState);
+      // Timeout de seguridad en caso de que tarde demasiado
+      setTimeout(() => {
+        pc.removeEventListener('icegatheringstatechange', checkState);
+        resolve();
+      }, 2000);
+    }
+  });
+
+  console.log('[emisor] enviando SDP al servidor WHIP');
+  try {
+    const res = await fetch(`${MEDIAMTX_URL}/${STREAM_NAME}/whip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/sdp' },
+      body: pc.localDescription.sdp
+    });
+
+    if (!res.ok) throw new Error(`Error de servidor: ${res.status}`);
+    
+    const answer = await res.text();
+    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    console.log('[emisor] Conectado exitosamente');
+  } catch (e) {
+    console.error('Fallo al conectar con MediaMTX:', e);
+    setStatus('warn', 'Error conectando al servidor');
+    stop();
+  }
 }
 
 function stop() {
   emitting = false;
 
-  if (pc) { pc.close(); pc = null; }
+  if (pc) { 
+    // Opcional: hacer un DELETE a MediaMTX para cerrar el stream (no estándar en todos los WHIP servers, pero buena práctica)
+    fetch(`${MEDIAMTX_URL}/${STREAM_NAME}/whip`, { method: 'DELETE' }).catch(()=>{});
+    pc.close(); 
+    pc = null; 
+  }
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
 
   localVideo.srcObject = null;
@@ -294,23 +333,6 @@ function stop() {
   stopBtn.disabled = true;
   setStatus('stopped', 'Detenido');
 }
-
-
-
-bc.onmessage = async (e) => {
-  const msg = e.data;
-  console.log('[emisor] mensaje recibido:', msg.type, msg);
-  if (!emitting) { console.log('[emisor] ignorado, aún no está emitiendo'); return; }
-  if (msg.type === 'receiver-ready') {
-    console.log('[emisor] receptor listo, creando oferta…');
-    await createOfferFor();
-  } else if (msg.type === 'answer' && pc) {
-    console.log('[emisor] aplicando respuesta remota');
-    await pc.setRemoteDescription(msg.sdp);
-  } else if (msg.type === 'candidate' && pc) {
-    try { await pc.addIceCandidate(msg.candidate); console.log('[emisor] ICE candidate agregado'); } catch (e) { console.warn('[emisor] error agregando candidate', e); }
-  }
-};
 
 startBtn.addEventListener('click', start);
 stopBtn.addEventListener('click', stop);

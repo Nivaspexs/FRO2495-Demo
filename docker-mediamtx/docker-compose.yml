@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    container_name: mediamtx_server
+    
+    # ---------------------------------------------------------
+    # CONFIGURACIÓN DE RED (NAT)
+    # ---------------------------------------------------------
+    # Opción A (Recomendada para Linux):
+    # 'network_mode: "host"' hace que el contenedor use la tarjeta de red 
+    # de tu máquina directamente. Esto elimina cualquier problema de NAT 
+    # o de IPs falsas de Docker, lo cual es vital para WebRTC.
+    network_mode: "host"
+    
+    # Opción B (Para Windows, macOS, o entornos estrictos):
+    # Si 'network_mode: host' no funciona en tu entorno, coméntalo (ponle un #) 
+    # y descomenta las siguientes líneas (ports y environment).
+    #
+    # ports:
+    #   - "8889:8889"       # Puerto para la API de WebRTC (Señalización WHIP/WHEP)
+    #   - "8189:8189/udp"   # Puerto UDP por donde viaja realmente el video (ICE)
+    # environment:
+    #   # TRUCO ANTINAT: Aquí le decimos a MediaMTX su verdadera IP en la red local.
+    #   # Cambia 192.168.1.100 por la IP local real del servidor.
+    #   - MTX_WEBRTCADDITIONALHOSTS=192.168.1.100
+    
+    # ---------------------------------------------------------
+    # ARCHIVO DE CONFIGURACIÓN
+    # ---------------------------------------------------------
+    # Vinculamos el archivo mediamtx.yml de tu carpeta al contenedor
+    volumes:
+      - ./mediamtx.yml:/mediamtx.yml
+      
+    # Reiniciar automáticamente si el servidor se apaga
+    restart: unless-stopped
