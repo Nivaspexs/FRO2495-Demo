@@ -430,6 +430,10 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.5 3.6 5.6 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.6-3.6-9S9.6 5.5 12 3Z"/></svg>
                 <span id="viewBtnLabel">Vista 360°</span>
               </button>
+              <button class="stage-btn" id="hudToggleBtn" type="button" aria-pressed="false" aria-controls="vrHudRoot" title="Mostrar u ocultar el panel flotante de la vista 360°" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span id="hudToggleLabel">Ocultar panel</span>
+              </button>
               <button class="stage-btn" id="audioBtn" type="button" disabled>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>
                 <span id="audioBtnLabel">Sin audio</span>
@@ -688,7 +692,7 @@ const state = {
   connectTimeout: null, autoplayWarned: false,
   hudHover: null, hudHitsReady: false, hudTexture: null, noSignalTexture: null,
   hudCtx: null, noSignalCtx: null, placeholderMode: 'none', toastTimer: null,
-  alertDismissed: false, scenePaused: false
+  alertDismissed: false, scenePaused: false, hudHidden: false
 };
 
 /* ── Utilidades ─────────────────────────────────────────────── */
@@ -804,7 +808,7 @@ function cacheUI() {
     'todayLabel','connectionPill','connectionText','vrBtn','vrBtnLabel','fullscreenBtn','settingsBtn',
     'alertBanner','alertTitle','alertText','alertSettingsBtn','alertCloseBtn','stage','remoteVideo',
     'liveChip','liveChipText','streamChip','chipRes','chipFps','chipRtt','stageClock',
-    'viewBtn','viewBtnLabel','audioBtn','audioBtnLabel','reconnectBtn','fullscreenBtn2',
+    'viewBtn','viewBtnLabel','hudToggleBtn','hudToggleLabel','audioBtn','audioBtnLabel','reconnectBtn','fullscreenBtn2',
     'placeholder','placeholderSpinner','placeholderTitle','placeholderText','placeholderRetry','placeholderSettings',
     'sessionCode','sessionStartFact','sessionDuration','ctxProfessional','ctxProcedure','ctxRoom','ctxServer','editSessionBtn',
     'qualityLabel','qualityBadge','qualityBar','qualityHint','connectedSince','uptime','reconnects','serverLabel',
@@ -1118,9 +1122,26 @@ function applyViewState() {
   if (state.sceneReady) {
     if (state.preview360 || state.inVR) playScene(); else pauseScene();
   }
+  updateHudVisibility();
   updateVrButton();
   drawHud();
   drawNoSignal();
+}
+function updateHudVisibility() {
+  const visible = state.inVR || !state.hudHidden;
+  if (ui.vrHudRoot && state.sceneReady) ui.vrHudRoot.setAttribute('visible', visible);
+  if (ui.hudToggleBtn) {
+    const available = Boolean(state.sceneReady && state.preview360 && !state.inVR);
+    ui.hudToggleBtn.hidden = !available;
+    ui.hudToggleBtn.setAttribute('aria-pressed', String(state.hudHidden));
+    setText(ui.hudToggleLabel, state.hudHidden ? 'Mostrar panel' : 'Ocultar panel');
+  }
+}
+function toggleHudPanel() {
+  if (!state.sceneReady) return;
+  state.hudHidden = !state.hudHidden;
+  updateHudVisibility();
+  showToast(state.hudHidden ? 'Panel flotante oculto. La vista 360° queda despejada.' : 'Panel flotante visible.', 'info', 2600);
 }
 function setStreamVisible(visible) {
   const changed = state.streamVisible !== visible;
@@ -2430,6 +2451,7 @@ function bindEvents() {
     ui.alertCloseBtn.addEventListener('click', () => { state.alertDismissed = true; ui.alertBanner.hidden = true; });
   }
   if (ui.viewBtn) ui.viewBtn.addEventListener('click', togglePreview360);
+  if (ui.hudToggleBtn) ui.hudToggleBtn.addEventListener('click', toggleHudPanel);
   if (ui.audioBtn) ui.audioBtn.addEventListener('click', toggleAudio);
   if (ui.reconnectBtn) ui.reconnectBtn.addEventListener('click', () => reconnectNow());
   if (ui.placeholderRetry) ui.placeholderRetry.addEventListener('click', () => reconnectNow());
