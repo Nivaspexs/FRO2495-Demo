@@ -599,13 +599,7 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
       <button class="btn-icon dialog-close" id="closeSettings" type="button" aria-label="Cerrar ajustes">×</button>
     </div>
     <div class="dialog-body">
-      <fieldset class="fieldset">
-        <legend>Conexión WHEP</legend>
-        <label class="field"><span>Servidor MediaMTX</span><input type="url" id="cfgServer" placeholder="https://servidor:8889" spellcheck="false"></label>
-        <p class="field-help" id="serverHelp">Dirección base del servidor WebRTC. Puede incluir un proxy inverso.</p>
-        <div class="inline-note" id="mixedNote" hidden></div>
-        <label class="field" style="margin-top:11px"><span>Nombre del stream</span><input type="text" id="cfgStream" placeholder="theta" spellcheck="false"></label>
-      </fieldset>
+      <p class="field-help" style="margin:0 0 16px">La recepción WHEP se realiza automáticamente desde este mismo servidor (nginx), usando el stream configurado (<code>theta</code> por defecto).</p>
       <fieldset class="fieldset">
         <legend>Contexto clínico</legend>
         <div class="form-grid">
@@ -636,10 +630,10 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
       </fieldset>
     </div>
     <div class="dialog-foot">
-      <button class="btn btn-ghost btn-sm" id="resetConfig" type="button">Restablecer conexión</button>
+      <button class="btn btn-ghost btn-sm" id="resetConfig" type="button">Restablecer vista</button>
       <div class="dialog-foot-right">
         <button class="btn btn-ghost btn-sm" id="cancelSettings" type="button">Cancelar</button>
-        <button class="btn btn-primary btn-sm" type="submit">Guardar y reconectar</button>
+        <button class="btn btn-primary btn-sm" type="submit">Guardar cambios</button>
       </div>
     </div>
   </form>
@@ -655,7 +649,7 @@ const $ = (id) => document.getElementById(id);
 const APP = { name: 'Teleodontología UFRO · Recepción WHEP', version: '2.0.0' };
 const STORAGE_KEY = 'ufro.teleodontologia.receptor.v2';
 const DEFAULTS = {
-  server: 'http://34.0.54.215:8889', stream: 'theta', vrView: 'sphere', rotation: -90,
+  server: '', stream: 'theta', vrView: 'sphere', rotation: -90,
   keepAwake: true, preview360: false, professional: '', procedure: '', room: '', notes: ''
 };
 const HISTORY_LEN = 60;
@@ -722,6 +716,7 @@ function fmtCodec(mime) {
   return part.replace(/^x-/, '').replace(/^H264$/i, 'H.264').replace(/^H265$/i, 'H.265');
 }
 function serverDisplay(server) {
+  if (!server) return location.host || 'mismo origen';
   try {
     const u = new URL(server);
     const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/+$/, '') : '';
@@ -759,8 +754,10 @@ function loadConfig() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch { saved = {}; }
   const cfg = { ...DEFAULTS, ...saved };
+  // La recepción siempre es del mismo origen: nginx publica /<stream>/whep.
+  cfg.server = '';
   const params = new URLSearchParams(location.search);
-  ['server', 'stream', 'professional', 'procedure', 'room', 'notes'].forEach(key => {
+  ['stream', 'professional', 'procedure', 'room', 'notes'].forEach(key => {
     if (params.has(key)) cfg[key] = params.get(key);
   });
   if (params.has('view')) cfg.vrView = params.get('view');
@@ -784,12 +781,12 @@ function saveConfig() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.config)); } catch { /* modo privado */ }
 }
 function applyConfigLabels() {
-  setText(ui.streamChip, state.config.stream || '—');
-  const server = serverDisplay(state.config.server);
+  setText(ui.streamChip, state.config.stream || 'theta');
+  const server = state.config.server ? serverDisplay(state.config.server) : 'Mismo origen (nginx)';
   setText(ui.serverLabel, server);
   setText(ui.ctxServer, server);
-  if (ui.serverLabel) ui.serverLabel.title = state.config.server;
-  if (ui.ctxServer) ui.ctxServer.title = state.config.server;
+  if (ui.serverLabel) ui.serverLabel.title = state.config.server || location.origin;
+  if (ui.ctxServer) ui.ctxServer.title = state.config.server || location.origin;
   setText(ui.sessionCode, state.sessionCode);
   if (ui.cfgSessionCode) ui.cfgSessionCode.value = state.sessionCode;
   setContextValue(ui.ctxProfessional, state.config.professional);
@@ -814,8 +811,8 @@ function cacheUI() {
     'mRtt','mFps','mRes','mBitrate','mLoss','mJitter','dCodec','dIce','dBuffer','dDecode','dFrames','dDropped',
     'dFreezes','dBytes','dSetup','dAudio','dPc','dIceState','chart','chartCurrent','eventLog','clearLogBtn',
     'downloadJson','downloadCsv','settingsDialog','settingsForm','closeSettings','cancelSettings','resetConfig',
-    'cfgServer','cfgStream','cfgProfessional','cfgProcedure','cfgRoom','cfgSessionCode','cfgNotes','cfgViewMode',
-    'cfgRotation','cfgKeepAwake','serverHelp','mixedNote','xrStatus','wakeStatus','toast','vrScene','videoSphere',
+    'cfgProfessional','cfgProcedure','cfgRoom','cfgSessionCode','cfgNotes','cfgViewMode',
+    'cfgRotation','cfgKeepAwake','xrStatus','wakeStatus','toast','vrScene','videoSphere',
     'flatGroup','flatFrame','flatScreen','cameraRig','vrCamera','gazeCursor','vrHudRoot','vrHudVisual',
     'vrNoSignalRoot','vrNoSignalVisual','leftController','rightController'
   ].forEach(id => { ui[id] = $(id); });
@@ -844,7 +841,7 @@ function init() {
   initVideoEvents();
   setStatus('connecting', 'Conectando…', 'CONECTANDO');
   addEvent(`Receptor iniciado · ${APP.name}.`, 'info');
-  addEvent(`Servidor ${serverDisplay(state.config.server)} · stream «${state.config.stream}».`, 'info');
+  addEvent(`Recepción desde el mismo origen (${serverDisplay(state.config.server)}) · stream «${state.config.stream}».`, 'info');
   showPlaceholder('Conectando con la cámara', 'Estableciendo el enlace WebRTC con MediaMTX…', { spinner: true, retry: false, mode: 'connecting' });
   drawChart();
   drawHud();
@@ -1301,14 +1298,9 @@ function updateReconnects() { setText(ui.reconnects, String(Math.max(0, state.at
 function updateAlerts() {
   if (!ui.alertBanner) return;
   let title = '', text = '';
-  const httpsPage = location.protocol === 'https:';
-  const httpServer = /^http:\/\//i.test(state.config.server || '');
-  if (httpsPage && httpServer) {
-    title = 'Conexión bloqueada por contenido mixto';
-    text = 'La página usa HTTPS, pero el servidor WHEP está configurado en HTTP. El navegador bloqueará el video. Use un servidor HTTPS o un proxy inverso.';
-  } else if (!window.isSecureContext) {
+  if (!window.isSecureContext) {
     title = 'Modo inmersivo limitado en Meta Quest 2';
-    text = 'Para entrar en VR, esta página debe servirse por HTTPS. La recepción 2D sigue disponible.';
+    text = 'Para entrar en VR, esta página debe servirse por HTTPS. La recepción 2D y la vista 360° en pantalla siguen disponibles.';
   }
   if (!title || state.alertDismissed) { ui.alertBanner.hidden = true; return; }
   setText(ui.alertTitle, title);
@@ -1363,13 +1355,16 @@ async function connect() {
       } else if (ev.track.kind === 'video') {
         if (!state.hasVideo) addEvent('Pista de video recibida.', 'success');
       }
-      const played = video.play();
-      if (played && typeof played.catch === 'function') {
-        played.catch((err) => {
-          if (state.autoplayWarned) return;
-          state.autoplayWarned = true;
-          addEvent(`El navegador no inició la reproducción automática: ${err.message || err}`, 'warn');
-        });
+      if (ev.track.kind === 'video' || stream.getVideoTracks().length === 0) {
+        const played = video.play();
+        if (played && typeof played.catch === 'function') {
+          played.catch((err) => {
+            if (err && (err.name === 'AbortError' || /interrupted by a new load request/i.test(err.message || ''))) return;
+            if (state.autoplayWarned) return;
+            state.autoplayWarned = true;
+            addEvent(`El navegador no inició la reproducción automática: ${err.message || err}`, 'warn');
+          });
+        }
       }
     };
 
@@ -1429,7 +1424,7 @@ async function connect() {
     if (state.pc !== pc || gen !== state.generation) return;
 
     state.abortController = new AbortController();
-    const whepUrl = `${state.config.server}/${state.config.stream}/whep`;
+    const whepUrl = `/${state.config.stream}/whep`;
     const res = await fetch(whepUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/sdp', 'Accept': 'application/sdp' },
@@ -1445,10 +1440,10 @@ async function connect() {
 
     const location = res.headers.get('Location');
     if (location) {
-      try { state.whepResource = new URL(location, whepUrl).href; } catch { state.whepResource = location; }
+      try { state.whepResource = new URL(location, window.location.origin).href; } catch { state.whepResource = location; }
     }
-    const answer = (await res.text()).trim();
-    if (!answer) throw new Error('El servidor WHEP devolvió una respuesta SDP vacía.');
+    const answer = await res.text();
+    if (!answer.trim()) throw new Error('El servidor WHEP devolvió una respuesta SDP vacía.');
     state.abortController = null;
     await pc.setRemoteDescription({ type: 'answer', sdp: answer });
     if (state.pc !== pc || gen !== state.generation) return;
@@ -1911,7 +1906,8 @@ function renderMetrics(stats) {
   setText(ui.dFreezes, has ? (state.freezes ? `${NF0.format(state.freezes)} · ${NF1.format(state.freezeSeconds)} s` : '0') : '—');
   setText(ui.dBytes, has ? fmtBytes(state.bytesReceived) : '—');
   setText(ui.dSetup, state.whepSetupMs != null ? `${NF0.format(state.whepSetupMs)} ms` : '—');
-  setText(ui.dAudio, state.hasAudio ? `${state.audioCodec}${state.audioEnabled ? ' · audible' : ' · silenciado'}` : 'Sin pista');
+  const audioCodec = state.audioCodec && state.audioCodec !== '—' ? state.audioCodec : 'Audio';
+  setText(ui.dAudio, state.hasAudio ? `${audioCodec} · ${state.audioEnabled ? 'audible' : 'silenciado'}` : 'Sin pista');
   setText(ui.dPc, connectionLabel(state.pcState));
   setText(ui.dIceState, connectionLabel(state.iceState));
 }
@@ -2181,7 +2177,7 @@ function buildReport() {
       notes: state.config.notes || null
     },
     connection: {
-      server: state.config.server,
+      server: state.config.server || location.origin,
       stream: state.config.stream,
       attempts: state.attempts,
       reconnections: Math.max(0, state.attempts - 1),
@@ -2271,8 +2267,6 @@ function downloadCsv() {
 /* ── Ajustes, avisos y pantalla activa ──────────────────────── */
 function populateSettings() {
   if (!ui.settingsForm) return;
-  ui.cfgServer.value = state.config.server;
-  ui.cfgStream.value = state.config.stream;
   ui.cfgProfessional.value = state.config.professional || '';
   ui.cfgProcedure.value = state.config.procedure || '';
   ui.cfgRoom.value = state.config.room || '';
@@ -2292,29 +2286,6 @@ function populateSettings() {
 
 function updateSettingsWarnings() {
   if (!ui.settingsForm) return;
-  const raw = String(ui.cfgServer.value || '').trim();
-  let valid = false;
-  try {
-    const parsed = new URL(raw);
-    valid = parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch { valid = false; }
-
-  const httpsPage = location.protocol === 'https:';
-  const httpServer = /^http:\/\//i.test(raw);
-  if (ui.mixedNote) {
-    ui.mixedNote.hidden = !(httpsPage && httpServer);
-    ui.mixedNote.textContent = 'Página HTTPS con servidor WHEP HTTP: el navegador bloqueará el video por contenido mixto. Use HTTPS o un proxy inverso.';
-  }
-  if (ui.serverHelp) {
-    const invalid = Boolean(raw) && !valid;
-    ui.serverHelp.classList.toggle('is-error', invalid);
-    ui.serverHelp.textContent = !raw
-      ? 'Dirección base del servidor WebRTC. Puede incluir un proxy inverso.'
-      : invalid
-        ? 'URL no válida. Use el formato http://servidor:8889 o https://servidor/ruta.'
-        : 'Dirección base del servidor WebRTC. Puede incluir un proxy inverso.';
-  }
-
   if (ui.xrStatus) {
     if (state.inVR) ui.xrStatus.textContent = 'Modo inmersivo activo en este visor.';
     else if (!window.isSecureContext) ui.xrStatus.textContent = 'No disponible por HTTP: WebXR requiere que la página se sirva por HTTPS.';
@@ -2366,7 +2337,7 @@ function openSettings() {
   } else {
     ui.settingsDialog.setAttribute('open', '');
   }
-  setTimeout(() => { try { ui.cfgServer.focus(); ui.cfgServer.select(); } catch { /* opcional */ } }, 50);
+  setTimeout(() => { try { ui.cfgProfessional.focus(); } catch { /* opcional */ } }, 50);
 }
 
 function closeSettings() {
@@ -2378,26 +2349,8 @@ function closeSettings() {
 
 function saveSettings(ev) {
   ev.preventDefault();
-  const server = String(ui.cfgServer.value || '').trim().replace(/\/+$/, '');
-  let parsed;
-  try { parsed = new URL(server); } catch { parsed = null; }
-  if (!parsed || !['http:', 'https:'].includes(parsed.protocol)) {
-    updateSettingsWarnings();
-    showToast('Ingrese una URL válida para el servidor MediaMTX.', 'error');
-    ui.cfgServer.focus();
-    return;
-  }
-  const stream = String(ui.cfgStream.value || '').trim().replace(/^\/+|\/+$/g, '');
-  if (!stream || !/^[A-Za-z0-9._/-]{1,120}$/.test(stream)) {
-    showToast('El nombre del stream no es válido. Use letras, números, punto, guion o barra.', 'error');
-    ui.cfgStream.focus();
-    return;
-  }
-
   state.config = {
     ...state.config,
-    server,
-    stream,
     professional: String(ui.cfgProfessional.value || '').trim().slice(0, 80),
     procedure: String(ui.cfgProcedure.value || '').trim().slice(0, 120),
     room: String(ui.cfgRoom.value || '').trim().slice(0, 60),
@@ -2407,27 +2360,18 @@ function saveSettings(ev) {
     keepAwake: ui.cfgKeepAwake.checked
   };
   saveConfig();
-  state.alertDismissed = false;
   applyConfigLabels();
-  updateAlerts();
   closeSettings();
-  addEvent(`Configuración actualizada · ${serverDisplay(state.config.server)} · stream «${state.config.stream}».`, 'info');
+  addEvent(`Configuración de sesión actualizada · stream «${state.config.stream}».`, 'info');
   if (state.config.keepAwake) requestWakeLock(); else releaseWakeLock();
-  showToast('Configuración guardada. Reconectando…', 'info');
-  reconnectNow('Aplicando nueva configuración.');
+  showToast('Configuración guardada.', 'info');
 }
 
 function resetSettingsForm() {
-  state.config = {
-    ...state.config,
-    server: DEFAULTS.server,
-    stream: DEFAULTS.stream,
-    vrView: DEFAULTS.vrView,
-    rotation: DEFAULTS.rotation
-  };
-  populateSettings();
-  updateSettingsWarnings();
-  showToast('Conexión restablecida en el formulario. Guarde para aplicar.', 'info');
+  ui.cfgViewMode.value = DEFAULTS.vrView;
+  ui.cfgRotation.value = String(DEFAULTS.rotation);
+  ui.cfgKeepAwake.checked = Boolean(DEFAULTS.keepAwake);
+  showToast('Vista restablecida en el formulario. Guarde para aplicar.', 'info');
 }
 
 function showToast(message, kind = 'info', duration = 3800) {
@@ -2482,10 +2426,6 @@ function bindEvents() {
   }
   if (ui.settingsForm) ui.settingsForm.addEventListener('submit', saveSettings);
   if (ui.resetConfig) ui.resetConfig.addEventListener('click', resetSettingsForm);
-  if (ui.cfgServer) {
-    ui.cfgServer.addEventListener('input', updateSettingsWarnings);
-    ui.cfgServer.addEventListener('change', updateSettingsWarnings);
-  }
   if (ui.alertCloseBtn) {
     ui.alertCloseBtn.addEventListener('click', () => { state.alertDismissed = true; ui.alertBanner.hidden = true; });
   }
