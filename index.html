@@ -1,252 +1,2547 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-CL">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WebRTC Local · Receptor</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#003A70">
+<meta name="description" content="Recepción de teleodontología UFRO: sesión clínica remota con cámara 360°, WebRTC y métricas de enlace para Meta Quest 2.">
+<title>Teleodontología UFRO · Recepción de sesión en vivo</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23003A70'/%3E%3Cpath d='M24 18c-6 0-10 4.4-10 10 0 4.6 2 8.4 3.2 12.8 1 3.4 1.4 7.2 4.2 7.2 2.2 0 2.4-3.2 3.2-6 .8-2.8 2-4.4 5.4-4.4s4.6 1.6 5.4 4.4c.8 2.8 1 6 3.2 6 2.8 0 3.2-3.8 4.2-7.2C44 36.4 46 32.6 46 28c0-5.6-4-10-10-10-3 0-4.6 1.4-6 1.4S27 18 24 18Z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
-  :root{
-    --bg: #0d1117;
-    --panel: #151b23;
-    --line: #262e38;
-    --text: #e6edf3;
-    --dim: #7d8590;
-    --accent: #3fb950;
-    --accent-dim: #1f6b34;
-    --warn: #d29922;
-    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  }
-  *{ box-sizing: border-box; }
-  body{
-    margin:0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    min-height: 100vh;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    padding: 32px 20px 60px;
-  }
-  header{
-    width:100%;
-    max-width: 720px;
-    display:flex;
-    align-items:baseline;
-    justify-content:space-between;
-    margin-bottom: 22px;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 16px;
-  }
-  h1{ font-size: 19px; font-weight: 600; margin:0; letter-spacing: -0.01em; }
-  h1 span{ color: var(--dim); font-weight: 400; }
-  .status{
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--dim);
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-  .dot{ width:7px; height:7px; border-radius:50%; background: var(--dim); transition: background .2s; }
-  .dot.live{ background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-  .dot.warn{ background: var(--warn); }
+:root{
+  --navy:#003A70; --navy-2:#002C56; --navy-3:#00203F;
+  --blue:#1F5F96; --blue-soft:#E8F0F7;
+  --green:#4F7D1E; --green-2:#6E9F2E; --green-bright:#8CC63F;
+  --amber:#8A5A00; --amber-2:#E0A526; --red:#A3261B; --red-2:#E06666;
+  --ink:#182838; --text:#1E2D3D; --muted:#5D6F81; --muted-2:#8494A4;
+  --bg:#F2F5F8; --card:#fff; --line:#DCE3EA; --line-2:#C8D3DF; --soft:#F7F9FB;
+  --serif:Georgia,'Times New Roman','Liberation Serif',serif;
+  --sans:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  --shadow:0 1px 2px rgba(11,33,55,.05),0 8px 24px rgba(11,33,55,.03);
+  --radius:9px;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.45;min-height:100vh}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+a{color:var(--navy)}
+svg{display:block}
+[hidden]{display:none!important}
+.wrap{width:min(calc(100% - 48px),1480px);margin-inline:auto}
+.skip-link{position:absolute;left:-9999px;top:0;z-index:9999;background:#fff;color:var(--navy);padding:10px 14px;border-radius:0 0 6px 0;font-weight:700}
+.skip-link:focus{left:0}
+:focus-visible{outline:2px solid #2A7AB5;outline-offset:2px}
+.masthead :focus-visible,.dialog-head :focus-visible{outline-color:var(--green-bright)}
+::selection{background:var(--navy);color:#fff}
 
-  main{ width:100%; max-width: 720px; }
+.utility{background:var(--navy-3);color:#B8CCDE;font-size:10.5px;letter-spacing:.09em;text-transform:uppercase}
+.utility-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:34px}
+.utility-brand{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.utility-meta{display:flex;align-items:center;gap:10px;white-space:nowrap;color:#8FAABF}
+.utility-sep{color:#4B6A84}
 
-  .panel{
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .panel-head{
-    display:flex; justify-content:space-between; align-items:center;
-    padding: 10px 14px; border-bottom: 1px solid var(--line);
-    font-size: 12px; color: var(--dim); font-family: var(--mono);
-  }
-  video{
-    width:100%; display:block; background:#000;
-    aspect-ratio: 16/9; object-fit: contain;
-  }
-  .placeholder{
-    position: relative;
-  }
-  .placeholder::after{
-    content: attr(data-msg);
-    position:absolute; inset:0;
-    display:flex; align-items:center; justify-content:center;
-    color: var(--dim); font-size: 13px; font-family: var(--mono);
-    pointer-events:none;
-  }
-  .placeholder.hidden::after{ content:''; }
+.masthead{position:relative;overflow:hidden;background:linear-gradient(125deg,#003A70 0%,#002C56 58%,#002449 100%);color:#fff}
+.masthead::after{content:"";position:absolute;right:-80px;top:-140px;width:420px;height:420px;border:1px solid rgba(255,255,255,.07);border-radius:50%;box-shadow:0 0 0 70px rgba(255,255,255,.025),0 0 0 140px rgba(255,255,255,.018);pointer-events:none}
+.masthead-inner{position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:28px;padding:22px 0 24px}
+.brand{display:flex;align-items:center;gap:16px;min-width:0}
+.crest{display:grid;place-items:center;flex:0 0 auto;width:54px;height:54px;padding:8px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.06);color:#fff}
+.crest svg{width:100%;height:100%}
+.eyebrow{margin:0;font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#8FB3D1}
+.masthead h1{margin:3px 0 4px;font-family:var(--serif);font-size:clamp(25px,2.3vw,33px);font-weight:400;line-height:1.08;letter-spacing:-.01em}
+.masthead h1 span{display:inline-block;margin-left:12px;font-family:var(--sans);font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#AFC6DB;vertical-align:middle}
+.brand-sub{margin:0;font-size:12.5px;color:#AFC6DB}
+.masthead-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+.connection-pill{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid rgba(255,255,255,.17);border-radius:6px;background:rgba(255,255,255,.07);color:#E7F0F7;font-size:12px;font-weight:600;white-space:nowrap}
+.status-dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%;background:#8494A4}
+.connection-pill[data-state="connecting"] .status-dot{background:var(--amber-2);box-shadow:0 0 0 3px rgba(224,165,38,.16);animation:pulse 1.6s infinite}
+.connection-pill[data-state="live"] .status-dot{background:var(--green-bright);box-shadow:0 0 0 3px rgba(140,198,63,.16)}
+.connection-pill[data-state="warn"] .status-dot{background:var(--amber-2)}
+.connection-pill[data-state="offline"] .status-dot{background:var(--red-2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 14px;border:1px solid transparent;border-radius:6px;font-size:12.5px;font-weight:600;line-height:1;text-decoration:none;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+.btn svg{flex:0 0 auto;width:17px;height:17px}
+.btn-vr{background:var(--green);border-color:#3F6517;color:#fff}
+.btn-vr:hover{background:#3F6517}
+.btn-vr:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn-primary:hover{background:var(--navy-2)}
+.btn-ghost{background:#fff;border-color:var(--line-2);color:var(--navy)}
+.btn-ghost:hover{background:var(--soft);border-color:#AEBECD}
+.btn-sm{height:34px;padding:0 10px;font-size:11.5px}
+.btn-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;padding:0;border:1px solid rgba(255,255,255,.18);border-radius:6px;background:rgba(255,255,255,.06);color:#fff}
+.btn-icon:hover{background:rgba(255,255,255,.13)}
+.btn-icon svg{width:18px;height:18px}
+.masthead-rule{height:3px;background:linear-gradient(90deg,var(--green-bright),var(--green-2) 48%,var(--green))}
 
-  .note{
-    max-width: 720px; width:100%; margin-top: 18px;
-    font-size: 12.5px; color: var(--dim); line-height: 1.6;
-  }
-  .note code{
-    background: var(--panel); border: 1px solid var(--line);
-    padding: 1px 5px; border-radius: 4px; font-family: var(--mono); color: var(--text);
-  }
+.alert{display:flex;align-items:flex-start;gap:12px;margin:18px 0 0;padding:12px 14px;border:1px solid #E8D49A;border-left:4px solid var(--amber-2);border-radius:6px;background:#FFF8E6;color:#584000;font-size:12.5px}
+.alert svg{flex:0 0 auto;width:18px;height:18px;margin-top:1px;color:var(--amber)}
+.alert strong{display:block;margin-bottom:2px;font-size:12.5px}
+.alert p{margin:0;line-height:1.45}
+.alert-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.alert-link{border:0;background:none;color:var(--navy);font-size:11.5px;font-weight:700;text-decoration:underline;padding:2px}
+.alert-close{width:26px;height:26px;border:0;border-radius:4px;background:rgba(0,0,0,.05);color:#584000;font-size:18px;line-height:1}
+.alert-close:hover{background:rgba(0,0,0,.1)}
+
+.main-grid{display:grid;grid-template-columns:minmax(0,1.72fr) minmax(350px,.78fr);align-items:start;gap:20px;margin:22px auto 0}
+.viewer-col{display:flex;flex-direction:column;gap:16px;min-width:0}
+.card{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow)}
+.viewer-card{overflow:hidden}
+.viewer-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:11px 14px;border-bottom:1px solid var(--line);background:linear-gradient(#fff,#FCFDFE)}
+.viewer-bar-left,.viewer-bar-right{display:flex;align-items:center;gap:6px;min-width:0}
+.viewer-bar-left{gap:10px}
+.viewer-bar-right{justify-content:flex-end;flex-wrap:wrap}
+.live-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #C9DFB8;border-radius:4px;background:#E9F3E3;color:#3F6B1B;font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#5C8F2A}
+.live-chip[data-state="connecting"]{border-color:#EAD29C;background:#FFF4DC;color:#7A5100}
+.live-chip[data-state="warn"]{border-color:#EBC3B1;background:#FDF0E8;color:#8A3A17}
+.live-chip[data-state="offline"]{border-color:#E7C1BD;background:#F8E9E8;color:#8A2118}
+.live-chip[data-state="live"] .live-dot{animation:pulse 1.8s infinite;box-shadow:0 0 0 3px rgba(92,143,42,.15)}
+.viewer-title{overflow:hidden;text-overflow:ellipsis;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.viewer-title code{padding:2px 6px;border:1px solid var(--line);border-radius:4px;background:var(--soft);color:var(--navy);font-family:var(--mono);font-size:11px}
+.metric-chip{padding:4px 7px;border:1px solid var(--line);border-radius:4px;background:var(--soft);color:#33475B;font-family:var(--mono);font-size:10.5px;white-space:nowrap}
+
+.stage{position:relative;isolation:isolate;overflow:hidden;aspect-ratio:16/9;background:#06121E}
+#vrScene{position:absolute!important;inset:0!important;z-index:1;display:block;width:100%!important;height:100%!important;pointer-events:none}
+#vrScene canvas{display:block;pointer-events:none}
+#remoteVideo{position:absolute;inset:0;z-index:2;width:100%;height:100%;object-fit:contain;background:#06121E;opacity:0;pointer-events:none;transition:opacity .25s ease}
+.stage.has-signal #remoteVideo{opacity:1}
+.stage.preview-360 #remoteVideo{opacity:0!important}
+.stage.preview-360 #vrScene,.stage.preview-360 #vrScene canvas{pointer-events:auto}
+.stage-brand{position:absolute;left:14px;top:12px;z-index:3;color:rgba(255,255,255,.62);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none}
+.stage-clock{position:absolute;right:14px;top:12px;z-index:3;display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;background:rgba(3,14,26,.55);color:#EAF2F8;font-family:var(--mono);font-size:10.5px;pointer-events:none;backdrop-filter:blur(6px)}
+.stage-clock svg{width:12px;height:12px;opacity:.7}
+.stage-overlay{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;pointer-events:none}
+.stage-overlay::before{content:"";position:absolute;right:0;bottom:0;left:0;height:140px;background:linear-gradient(to top,rgba(3,12,22,.82),rgba(3,12,22,0));pointer-events:none}
+.stage-controls{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.control-group{display:flex;gap:7px;flex-wrap:wrap}
+.stage-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 11px;border:1px solid rgba(255,255,255,.22);border-radius:6px;background:rgba(5,19,33,.7);color:#fff;font-size:11.5px;font-weight:600;pointer-events:auto;backdrop-filter:blur(8px);transition:background .15s,border-color .15s}
+.stage-btn:hover{background:rgba(5,19,33,.92);border-color:rgba(255,255,255,.4)}
+.stage-btn:disabled{opacity:.45;cursor:not-allowed}
+.stage-btn svg{width:15px;height:15px}
+.stage-btn-icon{width:38px;padding:0}
+.stage-placeholder{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;background:radial-gradient(circle at 50% 38%,#0C2136 0%,#06121E 62%,#040C15 100%);color:#fff;text-align:center}
+.placeholder-icon{display:grid;place-items:center;width:44px;height:44px;margin-bottom:14px;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(255,255,255,.04);color:var(--green-bright)}
+.placeholder-icon svg{width:22px;height:22px}
+.stage-placeholder h3{margin:0 0 6px;font-family:var(--serif);font-size:22px;font-weight:400;letter-spacing:-.01em}
+.stage-placeholder p{max-width:440px;margin:0;color:#AFC6DB;font-size:12.5px;line-height:1.55}
+.placeholder-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:16px;pointer-events:auto}
+.placeholder-actions .btn{height:38px;font-size:12px}
+.placeholder-actions .btn-ghost{border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.06);color:#fff}
+.placeholder-actions .btn-ghost:hover{background:rgba(255,255,255,.12)}
+.spinner{width:14px;height:14px;margin-bottom:12px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--green-bright);border-radius:50%;animation:spin 1s linear infinite}
+
+.viewer-foot{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 14px;border-top:1px solid var(--line);background:#FBFCFD}
+.session-facts{display:flex;align-items:center;gap:22px;flex-wrap:wrap;min-width:0}
+.fact{display:flex;flex-direction:column;gap:1px}
+.fact span{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2)}
+.fact strong{color:var(--navy);font-family:var(--mono);font-size:11.5px;font-weight:600;white-space:nowrap}
+.viewer-foot-note{max-width:410px;margin:0;color:var(--muted);font-size:10.5px;line-height:1.45;text-align:right}
+
+.card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1px solid var(--line)}
+.kicker{margin:0 0 3px;color:#5E7F2A;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+.card-head h2{margin:0;color:var(--navy);font-family:var(--serif);font-size:18px;font-weight:400;letter-spacing:-.01em}
+.section-card{padding:0 0 15px}
+.section-card .card-head{padding:15px 16px 12px;border-bottom:0}
+.context-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 16px;padding-top:13px;border-top:1px solid var(--line)}
+.context-item{min-width:0;padding-left:11px;border-left:2px solid #E3EAF0}
+.context-item span{display:block;margin-bottom:3px;color:var(--muted-2);font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.context-item strong{display:block;overflow:hidden;color:var(--ink);font-size:13px;font-weight:600;text-overflow:ellipsis;white-space:nowrap}
+.context-item strong.is-empty{color:var(--muted-2);font-weight:400;font-style:italic}
+.privacy-note{display:flex;align-items:flex-start;gap:7px;margin:13px 16px 0;color:var(--muted);font-size:11px;line-height:1.45}
+.privacy-note svg{flex:0 0 auto;width:13px;height:13px;margin-top:1px;color:#6B7D8E}
+.info-strip{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border:1px solid #D5E2EE;border-radius:7px;background:#EEF4FA;color:#2F4B66;font-size:11.5px;line-height:1.5}
+.info-strip svg{flex:0 0 auto;width:16px;height:16px;margin-top:1px;color:var(--blue)}
+.info-strip p{margin:0}
+.info-strip code{padding:1px 4px;border:1px solid #D5E2EE;border-radius:3px;background:#fff;font-family:var(--mono);font-size:10.5px}
+
+.sidebar{display:flex;flex-direction:column;gap:16px;min-width:0}
+.sidebar .card{overflow:hidden}
+.sidebar .card-head{padding:13px 15px}
+.sidebar .card-head h2{font-size:15px}
+.status-card .card-head{align-items:center}
+#qualityLabel{font-size:20px}
+.quality-badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;height:26px;padding:0 8px;border:1px solid var(--line);border-radius:4px;background:var(--soft);color:var(--muted);font-family:var(--mono);font-size:10.5px;font-weight:700}
+.quality-badge[data-quality="excellent"]{border-color:#C9DFB8;background:#E9F3E3;color:#3F6B1B}
+.quality-badge[data-quality="good"]{border-color:#D3E3BE;background:#F0F6E8;color:#4F7D1E}
+.quality-badge[data-quality="fair"]{border-color:#EAD29C;background:#FFF4DC;color:#7A5100}
+.quality-badge[data-quality="poor"]{border-color:#E7C1BD;background:#F8E9E8;color:#8A2118}
+.quality-body{padding:13px 15px 15px}
+.quality-bar{overflow:hidden;height:6px;border-radius:3px;background:#E9EEF3}
+.quality-bar span{display:block;width:0;height:100%;border-radius:3px;background:var(--green-2);transition:width .4s ease,background .2s}
+.quality-hint{margin:8px 0 0;color:var(--muted);font-size:11.5px;line-height:1.45}
+.quick-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;margin:13px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.quick-facts dt{margin-bottom:1px;color:var(--muted-2);font-size:8.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.quick-facts dd{margin:0;overflow:hidden;color:var(--ink);font-family:var(--mono);font-size:10.5px;text-overflow:ellipsis;white-space:nowrap}
+
+.metrics-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px 15px 15px}
+.metric{min-width:0;padding:9px 10px;border:1px solid #E5EBF1;border-radius:6px;background:var(--soft)}
+.metric-label{display:block;overflow:hidden;margin-bottom:2px;color:var(--muted-2);font-size:8.5px;font-weight:700;letter-spacing:.09em;text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
+.metric-value{display:flex;align-items:baseline;gap:3px;min-width:0}
+.metric-value strong{overflow:hidden;color:var(--navy);font-family:var(--mono);font-size:20px;font-weight:600;letter-spacing:-.03em;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.metric-value small{color:var(--muted);font-size:9px;font-weight:600;white-space:nowrap}
+#mRes{font-size:15px}
+.metric-sub{display:block;overflow:hidden;margin-top:1px;color:var(--muted-2);font-size:8.5px;text-overflow:ellipsis;white-space:nowrap}
+.tech{border-top:1px solid var(--line)}
+.tech summary{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;color:var(--navy);font-size:10.5px;font-weight:700;letter-spacing:.06em;list-style:none;text-transform:uppercase;cursor:pointer}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary::after{content:"+";color:var(--muted);font-family:var(--mono);font-size:14px}
+.tech[open] summary::after{content:"−"}
+.tech dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px;margin:0;padding:0 15px 14px}
+.tech dt{color:var(--muted-2);font-size:8px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.tech dd{overflow-wrap:anywhere;margin:0;color:var(--ink);font-family:var(--mono);font-size:10px}
+
+.chart-tabs{display:flex;gap:4px;padding:10px 15px 0}
+.chart-tab{padding:4px 7px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--muted);font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.chart-tab.is-active{border-color:var(--navy);background:var(--navy);color:#fff}
+.chart-wrap{padding:8px 15px 0}
+#chart{display:block;width:100%;height:120px}
+.chart-foot{display:flex;justify-content:space-between;gap:10px;padding:5px 15px 13px;color:var(--muted);font-size:9.5px}
+.chart-foot strong{color:var(--navy);font-weight:600}
+
+.event-log{max-height:190px;margin:0;padding:7px 15px 13px;overflow:auto;list-style:none;scrollbar-width:thin}
+.event-log li{display:grid;grid-template-columns:52px 7px minmax(0,1fr);align-items:start;gap:7px;padding:5px 0;border-bottom:1px solid #EEF2F6;font-size:10.5px;line-height:1.4}
+.event-log li:last-child{border-bottom:0}
+.event-log time{padding-top:1px;color:var(--muted-2);font-family:var(--mono);font-size:9px}
+.event-dot{width:6px;height:6px;margin-top:4px;border-radius:50%;background:#9AA9B7}
+.event--success .event-dot{background:#5C8F2A}
+.event--warn .event-dot{background:#D08A00}
+.event--error .event-dot{background:#B3261E}
+.event-msg{color:#33475B;word-break:break-word}
+.event-empty{padding:16px 15px;color:var(--muted-2);font-size:11px;text-align:center}
+.text-btn{padding:0;border:0;background:none;color:var(--blue);font-size:10px;font-weight:600;text-decoration:underline}
+.report-body{padding:12px 15px 15px}
+.report-copy{margin:0 0 11px;color:var(--muted);font-size:11px;line-height:1.5}
+.report-actions{display:flex;gap:7px;flex-wrap:wrap}
+
+.site-footer{margin-top:34px;border-top:1px solid var(--line);background:#fff}
+.footer-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:18px 0;color:var(--muted);font-size:10.5px;line-height:1.5}
+.footer-brand strong{display:block;color:var(--navy);font-size:11px}
+.footer-copy{max-width:640px;margin:0}
+.footer-tech{color:var(--muted-2);font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;white-space:nowrap}
+
+.settings-dialog{width:min(720px,94vw);max-height:90vh;padding:0;overflow:hidden;border:0;border-radius:10px;background:#fff;box-shadow:0 24px 70px rgba(2,14,26,.4);color:var(--text)}
+.settings-dialog::backdrop{background:rgba(3,13,24,.62);backdrop-filter:blur(3px)}
+.settings-form{display:flex;flex-direction:column;max-height:90vh}
+.dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px 15px;background:linear-gradient(125deg,#003A70,#002C56);color:#fff}
+.dialog-head .kicker{color:#9FC0DA}
+.dialog-head h2{margin:2px 0 0;color:#fff;font-family:var(--serif);font-size:23px;font-weight:400}
+.dialog-close{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:#fff}
+.dialog-body{padding:16px 20px;overflow:auto}
+.fieldset{min-width:0;margin:0 0 18px;padding:0;border:0}
+.fieldset:last-child{margin-bottom:4px}
+.fieldset legend{width:100%;margin-bottom:10px;padding:0 0 7px;border-bottom:1px solid var(--line);color:var(--navy);font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px 14px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field>span{color:var(--muted);font-size:9.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.field em{color:var(--muted-2);font-weight:400;font-style:normal;letter-spacing:0;text-transform:none}
+input[type=text],input[type=url],select,textarea{width:100%;min-height:38px;padding:8px 9px;border:1px solid var(--line-2);border-radius:5px;background:#fff;color:var(--ink);font-size:12.5px;line-height:1.3}
+select{appearance:none;padding-right:28px;background-image:linear-gradient(45deg,transparent 50%,#5D6F81 50%),linear-gradient(135deg,#5D6F81 50%,transparent 50%);background-position:calc(100% - 15px) 51%,calc(100% - 10px) 51%;background-repeat:no-repeat;background-size:5px 5px,5px 5px}
+textarea{min-height:58px;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(31,95,150,.12)}
+input[readonly]{background:#F4F7FA;color:var(--muted)}
+.field-help{margin:5px 0 0;color:var(--muted-2);font-size:10.5px;line-height:1.4}
+.field-help.is-error{color:var(--red)}
+.inline-note{margin-top:9px;padding:8px 10px;border:1px solid #E8D49A;border-radius:5px;background:#FFF8E6;color:#6B4D00;font-size:10.5px;line-height:1.45}
+.switch{display:flex;align-items:flex-start;gap:8px;margin-top:12px;color:#33475B;font-size:11.5px;cursor:pointer}
+.switch input{margin:2px 0 0;accent-color:var(--navy)}
+.device-note{margin-top:6px;padding:11px 12px;border:1px solid #D9E2EB;border-radius:6px;background:#F1F5F9;color:#33475B;font-size:11px;line-height:1.5}
+.device-note strong{display:block;margin-bottom:3px;color:var(--navy);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.device-note p{margin:0 0 4px}
+.device-note p:last-child{margin-bottom:0}
+.dialog-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--line);background:#F8FAFC}
+.dialog-foot-right{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto}
+
+.toast{position:fixed;left:50%;bottom:22px;z-index:10000;max-width:min(560px,calc(100vw - 28px));padding:11px 15px 11px 13px;border-left:4px solid var(--green-bright);border-radius:6px;background:#06233F;box-shadow:0 14px 40px rgba(2,14,26,.35);color:#F2F7FB;font-size:12px;line-height:1.4;opacity:0;pointer-events:none;transform:translate(-50%,18px);transition:opacity .2s,transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.toast.error{border-left-color:var(--red-2)}
+.toast.warn{border-left-color:var(--amber-2)}
+
+.stage:fullscreen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;background:#000}
+.stage:fullscreen .stage-overlay{padding:24px}
+.stage:fullscreen .stage-brand,.stage:fullscreen .stage-clock{font-size:12px}
+body.vr-active .stage video,body.vr-active .stage-overlay,body.vr-active .stage-placeholder,body.vr-active .stage-brand,body.vr-active .stage-clock{display:none!important}
+
+@media (max-width:1180px){
+  .main-grid{grid-template-columns:1fr}
+  .sidebar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .report-card{grid-column:1/-1}
+}
+@media (max-width:900px){
+  .masthead-inner{align-items:flex-start;flex-direction:column;gap:16px}
+  .masthead-actions{justify-content:flex-start;width:100%}
+  .brand-sub{max-width:520px}
+  .utility-meta{display:none}
+  .context-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .wrap{width:min(calc(100% - 28px),1480px)}
+  .sidebar{grid-template-columns:1fr}
+  .report-card{grid-column:auto}
+  .viewer-bar{align-items:flex-start;flex-direction:column;gap:8px}
+  .viewer-bar-right{justify-content:flex-start}
+  .viewer-foot{align-items:flex-start;flex-direction:column;gap:8px}
+  .viewer-foot-note{max-width:none;text-align:left}
+  .form-grid{grid-template-columns:1fr}
+  .dialog-head,.dialog-body,.dialog-foot{padding-right:16px;padding-left:16px}
+}
+@media (max-width:620px){
+  .stage{aspect-ratio:4/3}
+  .masthead h1 span{display:block;margin:7px 0 0}
+  .masthead-actions{gap:7px}
+  .connection-pill{order:-1;justify-content:center;width:100%}
+  .btn-vr{flex:1}
+  .brand{align-items:flex-start}
+  .crest{width:46px;height:46px}
+  .stage-btn{padding:0 9px;font-size:10.5px}
+  .stage-controls{justify-content:flex-end}
+  .control-group{flex:1}
+  .stage-btn-icon{order:2}
+  .session-facts{gap:14px}
+  .footer-inner{align-items:flex-start;flex-direction:column;gap:8px}
+}
+@media (max-width:420px){
+  .stage-btn{width:38px;padding:0}
+  .stage-btn span{display:none}
+  .stage-btn-icon{width:38px}
+  .context-grid{grid-template-columns:1fr}
+  .metric-value strong{font-size:18px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important}
+}
 </style>
-  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+<script src="vendor/aframe.min.js"></script>
+<script>
+if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0/aframe.min.js"><\/script>');}
+</script>
 </head>
 <body>
+<a class="skip-link" href="#main">Saltar al contenido</a>
 
-<header>
-  <h1>WebRTC Local <span>· receptor</span></h1>
-  <div class="status">
-    <div class="dot" id="statusDot"></div>
-    <span id="statusText">Buscando emisor…</span>
+<div class="utility">
+  <div class="wrap utility-inner">
+    <span class="utility-brand">Universidad de La Frontera · Facultad de Odontología</span>
+    <span class="utility-meta"><span id="todayLabel">—</span><span class="utility-sep">|</span><span>Prototipo académico FRO2495</span></span>
   </div>
-</header>
+</div>
 
-<main>
-  <div class="panel placeholder" id="placeholder" data-msg="Sin señal — abrí emisor.html y dale Iniciar emisión">
-    <div class="panel-head">
-      <span>Recibido por WebRTC</span>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:11px; margin:0;">
-          <input type="checkbox" id="vrMode"> Modo 360° (VR)
-        </label>
-        <span id="rcvInfo">—</span>
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <div class="brand">
+      <div class="crest" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none">
+          <path d="M24 4 41 10v12c0 10-7.4 18.4-17 22C14.4 40.4 7 32 7 22V10L24 4Z" stroke="currentColor" stroke-width="1.5" opacity=".45"/>
+          <path d="M17.8 15.5c-3 0-5.3 2.3-5.3 5.3 0 2.4 1 4.4 1.7 6.7.5 1.7.7 4 2.2 4 1.2 0 1.3-1.7 1.7-3.2.4-1.5 1-2.4 2.9-2.4s2.5.9 2.9 2.4c.4 1.5.5 3.2 1.7 3.2 1.5 0 1.7-2.3 2.2-4 .7-2.3 1.7-4.3 1.7-6.7 0-3-2.3-5.3-5.3-5.3-1.6 0-2.5.7-3.2.7s-1.6-.7-3.2-.7Z" fill="currentColor"/>
+          <circle cx="38" cy="10" r="2.7" fill="#8CC63F"/>
+        </svg>
+      </div>
+      <div class="brand-copy">
+        <p class="eyebrow">Universidad de La Frontera</p>
+        <h1>Teleodontología <span>Sesión clínica remota</span></h1>
+        <p class="brand-sub">Recepción inmersiva de cámara 360° · Enlace WebRTC</p>
       </div>
     </div>
-    
-    <div id="videoContainer2D">
-      <video id="remoteVideo" autoplay playsinline ></video>
-    </div>
-
-    <div id="videoContainerVR" style="display:none; width: 100%; aspect-ratio: 16/9; position: relative; background:#000;">
-      <a-scene embedded style="width: 100%; height: 100%;" vr-mode-ui="enabled: true">
-        <a-videosphere src="#remoteVideo" rotation="0 -90 0"></a-videosphere>
-        <a-entity camera look-controls position="0 0 0"></a-entity>
-      </a-scene>
+    <div class="masthead-actions">
+      <div class="connection-pill" id="connectionPill" data-state="connecting" role="status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="connectionText">Conectando…</span>
+      </div>
+      <button class="btn btn-vr" id="vrBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-4.2a2 2 0 0 1-1.6-.8l-1.1-1.4a1.4 1.4 0 0 0-2.2 0l-1.1 1.4a2 2 0 0 1-1.6.8H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2Z"/><circle cx="8" cy="12.5" r="1.4"/><circle cx="16" cy="12.5" r="1.4"/></svg>
+        <span id="vrBtnLabel">Preparando visor…</span>
+      </button>
+      <button class="btn-icon" id="fullscreenBtn" type="button" title="Pantalla completa" aria-label="Pantalla completa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5"/></svg>
+      </button>
+      <button class="btn-icon" id="settingsBtn" type="button" title="Ajustes de conexión y sesión" aria-label="Ajustes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.6v-.2h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
+      </button>
     </div>
   </div>
+</header>
+<div class="masthead-rule"></div>
+
+<div class="wrap">
+  <div class="alert" id="alertBanner" hidden>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 2.2 18a2 2 0 0 0 1.7 3h16.2a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg>
+    <div>
+      <strong id="alertTitle">Aviso de configuración</strong>
+      <p id="alertText"></p>
+    </div>
+    <div class="alert-actions">
+      <button class="alert-link" id="alertSettingsBtn" type="button">Ajustes</button>
+      <button class="alert-close" id="alertCloseBtn" type="button" aria-label="Cerrar aviso">×</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap main-grid" id="main">
+  <section class="viewer-col" aria-label="Vista de la cámara remota">
+    <article class="card viewer-card">
+      <div class="viewer-bar">
+        <div class="viewer-bar-left">
+          <span class="live-chip" id="liveChip" data-state="connecting"><span class="live-dot"></span><span id="liveChipText">CONECTANDO</span></span>
+          <span class="viewer-title">Cámara remota <code id="streamChip">theta</code></span>
+        </div>
+        <div class="viewer-bar-right">
+          <span class="metric-chip" id="chipRes">—</span>
+          <span class="metric-chip" id="chipFps">—</span>
+          <span class="metric-chip" id="chipRtt">—</span>
+        </div>
+      </div>
+
+      <div class="stage" id="stage">
+        <a-scene id="vrScene" embedded vr-mode-ui="enabled: false" loading-screen="enabled: false" device-orientation-permission-ui="enabled: false" background="color: #06121E" renderer="colorManagement: true; foveationLevel: 1">
+          <a-entity light="type: ambient; color: #FFFFFF; intensity: 1"></a-entity>
+          <a-videosphere id="videoSphere" src="#remoteVideo" rotation="0 -90 0" visible="false"></a-videosphere>
+          <a-entity id="flatGroup" visible="false">
+            <a-plane id="flatFrame" width="2.46" height="1.44" position="0 1.55 -2.91" material="shader: flat; color: #0B2237"></a-plane>
+            <a-plane id="flatScreen" width="2.4" height="1.38" position="0 1.55 -2.89" src="#remoteVideo" material="shader: flat; side: double"></a-plane>
+          </a-entity>
+          <a-entity id="cameraRig" position="0 0 0">
+            <a-entity id="vrCamera" camera="fov: 78; near: 0.05; far: 10000" look-controls="pointerLockEnabled: false" position="0 1.6 0">
+              <a-entity id="gazeCursor" cursor="fuse: true; fuseTimeout: 1000" raycaster="objects: .clickable; far: 6; enabled: false" visible="false" geometry="primitive: ring; radiusInner: 0.006; radiusOuter: 0.012" material="shader: flat; color: #8CC63F; transparent: true; opacity: .75"></a-entity>
+              <a-entity id="vrHudRoot" position="0 -0.30 -1.55">
+                <a-plane id="vrHudVisual" width="1.15" height="0.4107" material="shader: flat; transparent: true; opacity: 1; side: double"></a-plane>
+              </a-entity>
+              <a-entity id="vrNoSignalRoot" position="0 0.20 -1.8" visible="false">
+                <a-plane id="vrNoSignalVisual" width="0.98" height="0.283" material="shader: flat; transparent: true; opacity: 1; side: double"></a-plane>
+              </a-entity>
+            </a-entity>
+          </a-entity>
+          <a-entity id="leftController" laser-controls="hand: left; model: false"></a-entity>
+          <a-entity id="rightController" laser-controls="hand: right; model: false"></a-entity>
+        </a-scene>
+
+        <video id="remoteVideo" autoplay muted playsinline preload="auto"></video>
+        <div class="stage-brand">UFRO · Teleodontología</div>
+        <div class="stage-clock" title="Hora local">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span id="stageClock">--:--:--</span>
+        </div>
+
+        <div class="stage-overlay">
+          <div class="stage-controls">
+            <div class="control-group">
+              <button class="stage-btn" id="viewBtn" type="button" aria-label="Cambiar a vista 360 grados">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.5 3.6 5.6 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.6-3.6-9S9.6 5.5 12 3Z"/></svg>
+                <span id="viewBtnLabel">Vista 360°</span>
+              </button>
+              <button class="stage-btn" id="audioBtn" type="button" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18 6a8.5 8.5 0 0 1 0 12"/></svg>
+                <span id="audioBtnLabel">Sin audio</span>
+              </button>
+              <button class="stage-btn" id="reconnectBtn" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.7"/><path d="M20 4v7h-7"/></svg>
+                <span>Reconectar</span>
+              </button>
+            </div>
+            <button class="stage-btn stage-btn-icon" id="fullscreenBtn2" type="button" title="Pantalla completa" aria-label="Pantalla completa">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="stage-placeholder" id="placeholder">
+          <div class="placeholder-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.2a10.5 10.5 0 0 1 14 0M8.5 15.6a5.8 5.8 0 0 1 7 0"/><path d="M12 19h.01"/></svg>
+          </div>
+          <div class="spinner" id="placeholderSpinner" aria-hidden="true"></div>
+          <h3 id="placeholderTitle">Conectando con la cámara</h3>
+          <p id="placeholderText">Estableciendo el enlace WebRTC con MediaMTX…</p>
+          <div class="placeholder-actions">
+            <button class="btn btn-vr" id="placeholderRetry" type="button">Reintentar ahora</button>
+            <button class="btn btn-ghost" id="placeholderSettings" type="button">Ajustes de conexión</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="viewer-foot">
+        <div class="session-facts">
+          <div class="fact"><span>Código de sesión</span><strong id="sessionCode">—</strong></div>
+          <div class="fact"><span>Inicio</span><strong id="sessionStartFact">—</strong></div>
+          <div class="fact"><span>Duración</span><strong id="sessionDuration">00:00:00</strong></div>
+        </div>
+        <p class="viewer-foot-note">Transmisión en vivo para apoyo remoto. No se almacenan imágenes ni audio en esta página.</p>
+      </div>
+    </article>
+
+    <article class="card section-card">
+      <div class="card-head">
+        <div><p class="kicker">Contexto clínico</p><h2>Sesión de teleodontología</h2></div>
+        <button class="btn btn-ghost btn-sm" id="editSessionBtn" type="button">Editar datos</button>
+      </div>
+      <div class="context-grid">
+        <div class="context-item"><span>Profesional</span><strong id="ctxProfessional">Sin asignar</strong></div>
+        <div class="context-item"><span>Procedimiento</span><strong id="ctxProcedure">Sin asignar</strong></div>
+        <div class="context-item"><span>Box / sala</span><strong id="ctxRoom">Sin asignar</strong></div>
+        <div class="context-item"><span>Enlace</span><strong id="ctxServer">—</strong></div>
+      </div>
+      <p class="privacy-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+        <span>Use códigos o iniciales. Recuerde contar con consentimiento informado para la transmisión y no ingrese datos identificatorios del paciente.</span>
+      </p>
+    </article>
+
+    <div class="info-strip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+      <p><strong>Lectura de métricas.</strong> RTT, jitter y pérdida describen el enlace WebRTC, no la latencia vidrio a vidrio. Para una medición completa, use el reloj de referencia <code>reloj.py</code> en la escena remota.</p>
+    </div>
+  </section>
+
+  <aside class="sidebar" aria-label="Estado y métricas de la sesión">
+    <section class="card status-card">
+      <div class="card-head">
+        <div><p class="kicker">Estado del enlace</p><h2 id="qualityLabel">Sin datos</h2></div>
+        <span class="quality-badge" id="qualityBadge" data-quality="unknown" title="Puntaje de calidad del enlace">—</span>
+      </div>
+      <div class="quality-body">
+        <div class="quality-bar"><span id="qualityBar"></span></div>
+        <p class="quality-hint" id="qualityHint">Esperando la primera muestra de video.</p>
+        <dl class="quick-facts">
+          <div><dt>Conectado desde</dt><dd id="connectedSince">—</dd></div>
+          <div><dt>Disponibilidad</dt><dd id="uptime">—</dd></div>
+          <div><dt>Reconexiones</dt><dd id="reconnects">0</dd></div>
+          <div><dt>Servidor</dt><dd id="serverLabel" title="">—</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="card metrics-card">
+      <div class="card-head">
+        <div><p class="kicker">Telemetría</p><h2>Métricas en vivo</h2></div>
+        <span class="quality-badge" style="min-width:38px">1 s</span>
+      </div>
+      <div class="metrics-grid">
+        <div class="metric"><span class="metric-label">Latencia RTT</span><div class="metric-value"><strong id="mRtt">—</strong><small>ms</small></div><span class="metric-sub">red, ida y vuelta</span></div>
+        <div class="metric"><span class="metric-label">Cuadros por segundo</span><div class="metric-value"><strong id="mFps">—</strong><small>fps</small></div><span class="metric-sub">video decodificado</span></div>
+        <div class="metric"><span class="metric-label">Resolución</span><div class="metric-value"><strong id="mRes">—</strong></div><span class="metric-sub">cuadro recibido</span></div>
+        <div class="metric"><span class="metric-label">Bitrate</span><div class="metric-value"><strong id="mBitrate">—</strong><small>Mbps</small></div><span class="metric-sub">tasa de recepción</span></div>
+        <div class="metric"><span class="metric-label">Pérdida de paquetes</span><div class="metric-value"><strong id="mLoss">—</strong><small>%</small></div><span class="metric-sub">acumulada en la sesión</span></div>
+        <div class="metric"><span class="metric-label">Jitter</span><div class="metric-value"><strong id="mJitter">—</strong><small>ms</small></div><span class="metric-sub">variación de llegada</span></div>
+      </div>
+      <details class="tech">
+        <summary>Detalle técnico</summary>
+        <dl>
+          <div><dt>Códec</dt><dd id="dCodec">—</dd></div>
+          <div><dt>Ruta ICE</dt><dd id="dIce">—</dd></div>
+          <div><dt>Buffer de video</dt><dd id="dBuffer">—</dd></div>
+          <div><dt>Decodificación</dt><dd id="dDecode">—</dd></div>
+          <div><dt>Cuadros decodificados</dt><dd id="dFrames">—</dd></div>
+          <div><dt>Cuadros descartados</dt><dd id="dDropped">—</dd></div>
+          <div><dt>Congelamientos</dt><dd id="dFreezes">—</dd></div>
+          <div><dt>Datos recibidos</dt><dd id="dBytes">—</dd></div>
+          <div><dt>Conmutación WHEP</dt><dd id="dSetup">—</dd></div>
+          <div><dt>Audio</dt><dd id="dAudio">—</dd></div>
+          <div><dt>Transporte</dt><dd id="dPc">—</dd></div>
+          <div><dt>Estado ICE</dt><dd id="dIceState">—</dd></div>
+        </dl>
+      </details>
+    </section>
+
+    <section class="card chart-card">
+      <div class="card-head">
+        <div><p class="kicker">Último minuto</p><h2>Tendencia del enlace</h2></div>
+      </div>
+      <div class="chart-tabs" role="group" aria-label="Métrica del gráfico">
+        <button class="chart-tab is-active" type="button" data-chart-metric="rtt" aria-pressed="true">RTT</button>
+        <button class="chart-tab" type="button" data-chart-metric="bitrate" aria-pressed="false">Bitrate</button>
+        <button class="chart-tab" type="button" data-chart-metric="fps" aria-pressed="false">FPS</button>
+      </div>
+      <div class="chart-wrap"><canvas id="chart" role="img" aria-label="Gráfico de tendencia del enlace en los últimos 60 segundos"></canvas></div>
+      <div class="chart-foot"><span id="chartCurrent">Sin datos en el último minuto.</span><span>60 s</span></div>
+    </section>
+
+    <section class="card log-card">
+      <div class="card-head">
+        <div><p class="kicker">Trazabilidad</p><h2>Registro de eventos</h2></div>
+        <button class="text-btn" id="clearLogBtn" type="button">Limpiar</button>
+      </div>
+      <ol class="event-log" id="eventLog" aria-live="polite"></ol>
+    </section>
+
+    <section class="card report-card">
+      <div class="card-head">
+        <div><p class="kicker">Documentación</p><h2>Reporte de sesión</h2></div>
+      </div>
+      <div class="report-body">
+        <p class="report-copy">Exporta métricas agregadas, eventos y contexto clínico. No incluye video, audio ni imágenes.</p>
+        <div class="report-actions">
+          <button class="btn btn-primary btn-sm" id="downloadJson" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></svg>
+            Descargar JSON
+          </button>
+          <button class="btn btn-ghost btn-sm" id="downloadCsv" type="button">CSV</button>
+        </div>
+      </div>
+    </section>
+  </aside>
 </main>
 
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <strong>Universidad de La Frontera</strong>
+      <span>Facultad de Odontología · Proyecto FRO2495</span>
+    </div>
+    <p class="footer-copy">Prototipo académico de teleodontología. No constituye un dispositivo médico. Las métricas corresponden al enlace WebRTC y no reemplazan una evaluación clínica.</p>
+    <span class="footer-tech">WebRTC · WHEP · MediaMTX</span>
+  </div>
+</footer>
 
+<dialog class="settings-dialog" id="settingsDialog" aria-labelledby="settingsTitle">
+  <form class="settings-form" id="settingsForm">
+    <div class="dialog-head">
+      <div><p class="kicker">Configuración</p><h2 id="settingsTitle">Ajustes de la sesión</h2></div>
+      <button class="btn-icon dialog-close" id="closeSettings" type="button" aria-label="Cerrar ajustes">×</button>
+    </div>
+    <div class="dialog-body">
+      <fieldset class="fieldset">
+        <legend>Conexión WHEP</legend>
+        <label class="field"><span>Servidor MediaMTX</span><input type="url" id="cfgServer" placeholder="https://servidor:8889" spellcheck="false"></label>
+        <p class="field-help" id="serverHelp">Dirección base del servidor WebRTC. Puede incluir un proxy inverso.</p>
+        <div class="inline-note" id="mixedNote" hidden></div>
+        <label class="field" style="margin-top:11px"><span>Nombre del stream</span><input type="text" id="cfgStream" placeholder="theta" spellcheck="false"></label>
+      </fieldset>
+      <fieldset class="fieldset">
+        <legend>Contexto clínico</legend>
+        <div class="form-grid">
+          <label class="field"><span>Profesional</span><input type="text" id="cfgProfessional" maxlength="80" placeholder="Nombre o código"></label>
+          <label class="field"><span>Procedimiento</span><input type="text" id="cfgProcedure" maxlength="120" placeholder="Ej. evaluación de urgencia"></label>
+          <label class="field"><span>Box / sala</span><input type="text" id="cfgRoom" maxlength="60" placeholder="Ej. Box 3"></label>
+          <label class="field"><span>Código de sesión</span><input type="text" id="cfgSessionCode" readonly></label>
+        </div>
+        <label class="field" style="margin-top:11px"><span>Notas de la sesión <em>(opcional)</em></span><textarea id="cfgNotes" maxlength="500" rows="2" placeholder="Observaciones del enlace o de la sesión"></textarea></label>
+        <p class="privacy-note" style="margin:10px 0 0">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          <span>No ingrese nombres ni datos identificatorios del paciente.</span>
+        </p>
+      </fieldset>
+      <fieldset class="fieldset">
+        <legend>Experiencia inmersiva</legend>
+        <div class="form-grid">
+          <label class="field"><span>Vista inicial en VR</span><select id="cfgViewMode"><option value="sphere">360° inmersiva</option><option value="flat">Pantalla plana</option></select></label>
+          <label class="field"><span>Orientación 360°</span><select id="cfgRotation"><option value="-90">-90° (Ricoh Theta X)</option><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option></select></label>
+        </div>
+        <label class="switch"><input type="checkbox" id="cfgKeepAwake"><span>Evitar que la pantalla se suspenda durante la sesión</span></label>
+        <div class="device-note">
+          <strong>Meta Quest 2</strong>
+          <p>WebXR requiere que esta página se sirva mediante HTTPS. Si se abre por HTTP, el modo inmersivo no estará disponible, aunque la recepción 2D seguirá funcionando.</p>
+          <p id="xrStatus">Verificando compatibilidad…</p>
+          <p id="wakeStatus">Estado de pantalla activa: —</p>
+        </div>
+      </fieldset>
+    </div>
+    <div class="dialog-foot">
+      <button class="btn btn-ghost btn-sm" id="resetConfig" type="button">Restablecer conexión</button>
+      <div class="dialog-foot-right">
+        <button class="btn btn-ghost btn-sm" id="cancelSettings" type="button">Cancelar</button>
+        <button class="btn btn-primary btn-sm" type="submit">Guardar y reconectar</button>
+      </div>
+    </div>
+  </form>
+</dialog>
 
-<p class="note">
-  Esta página pide el video al servidor MediaMTX usando el estándar WHEP. 
-  Asegúrate de cambiar la IP <code>192.168.1.100</code> en el código por la IP real del servidor Docker.
-</p>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
-const MEDIAMTX_URL = "http://34.0.54.215:8889"; // CAMBIA ESTO A LA IP DE TU SERVIDOR DOCKER
-const STREAM_NAME = "theta";
+(() => {
+'use strict';
 
-const remoteVideo = document.getElementById('remoteVideo');
+const $ = (id) => document.getElementById(id);
+const APP = { name: 'Teleodontología UFRO · Recepción WHEP', version: '2.0.0' };
+const STORAGE_KEY = 'ufro.teleodontologia.receptor.v2';
+const DEFAULTS = {
+  server: 'http://34.0.54.215:8889', stream: 'theta', vrView: 'sphere', rotation: -90,
+  keepAwake: true, preview360: false, professional: '', procedure: '', room: '', notes: ''
+};
+const HISTORY_LEN = 60;
+const MAX_SAMPLES = 14400;
+const MAX_EVENTS = 250;
+const HUD_W = 1400, HUD_H = 500, HUD_PLANE_W = 1.15, HUD_PLANE_H = 0.4107;
+const HUD_BUTTONS = [
+  { action: 'recenter', x: 48, y: 270, w: 320, h: 80 },
+  { action: 'view', x: 392, y: 270, w: 320, h: 80 },
+  { action: 'exit', x: 736, y: 270, w: 320, h: 80 }
+];
+const FONT_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+const FONT_MONO = 'ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace';
 
-const vrMode = document.getElementById('vrMode');
-const container2D = document.getElementById('videoContainer2D');
-const containerVR = document.getElementById('videoContainerVR');
+const NF0 = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+const NF1 = new Intl.NumberFormat('es-CL', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const NF2 = new Intl.NumberFormat('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-vrMode.addEventListener('change', (e) => {
-  if (e.target.checked) {
-    container2D.style.position = 'absolute';
-    container2D.style.opacity = '0';
-    container2D.style.pointerEvents = 'none';
-    containerVR.style.display = 'block';
-  } else {
-    container2D.style.position = 'relative';
-    container2D.style.opacity = '1';
-    container2D.style.pointerEvents = 'auto';
-    containerVR.style.display = 'none';
+const ui = {};
+const state = {
+  config: { ...DEFAULTS }, sessionCode: '', sessionStart: null, connectedAt: null,
+  connectedAccumMs: 0, connected: false, streamVisible: false, connecting: false,
+  generation: 0, pc: null, whepResource: null, abortController: null,
+  retryTimer: null, retryAttempt: 0, attempts: 0, nextRetryAt: null,
+  disconnectTimer: null, tickBusy: false, inVR: false, sceneReady: false, scene: null,
+  xrSupported: false, xrChecked: false, hasVideo: false, hasAudio: false, audioEnabled: false,
+  stats: null, quality: { key: 'unknown', label: 'Sin datos', score: 0, hint: '' },
+  history: emptyHistory(), samples: [], events: [], chartMetric: 'rtt',
+  lastBytes: 0, lastFrames: 0, lastStatsAt: 0, lastFrameValue: 0, lastWidth: 0,
+  lastFrameAt: 0, lastIceRoute: '', lastQualityKey: 'unknown', whepSetupMs: null,
+  lastQualityLogAt: 0, lastFreezeLogged: 0, lastErrorReason: '',
+  codec: '—', audioCodec: '—', iceRoute: '—', bufferMs: null, decodeMs: null,
+  freezes: 0, freezeSeconds: 0, framesDecoded: 0, framesDropped: 0, bytesReceived: 0,
+  packetsLost: 0, packetsReceived: 0, pcState: '—', iceState: '—',
+  stallCount: 0, stalled: false, stallReconnect: false, wakeLock: null,
+  connectTimeout: null, autoplayWarned: false,
+  hudHover: null, hudHitsReady: false, hudTexture: null, noSignalTexture: null,
+  hudCtx: null, noSignalCtx: null, placeholderMode: 'none', toastTimer: null,
+  alertDismissed: false, scenePaused: false
+};
+
+/* ── Utilidades ─────────────────────────────────────────────── */
+function emptyHistory() {
+  return { rtt: Array(HISTORY_LEN).fill(null), bitrate: Array(HISTORY_LEN).fill(null), fps: Array(HISTORY_LEN).fill(null) };
+}
+function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
+function pad2(n) { return String(n).padStart(2, '0'); }
+function fmtDuration(ms) {
+  const total = Math.max(0, Math.floor((ms || 0) / 1000));
+  return `${pad2(Math.floor(total / 3600))}:${pad2(Math.floor((total % 3600) / 60))}:${pad2(total % 60)}`;
+}
+function fmtClock(d) { return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; }
+function fmtLoss(v) { return v == null ? '—' : (v > 0 && v < 0.01 ? '<0,01' : (v < 10 ? NF1.format(v) : NF0.format(v))); }
+function fmtBytes(bytes) {
+  if (bytes == null) return '—';
+  if (bytes >= 1e9) return `${NF1.format(bytes / 1e9)} GB`;
+  if (bytes >= 1e6) return `${NF1.format(bytes / 1e6)} MB`;
+  if (bytes >= 1e3) return `${NF0.format(bytes / 1e3)} kB`;
+  return `${NF0.format(bytes)} B`;
+}
+function fmtCodec(mime) {
+  if (!mime) return '—';
+  const part = String(mime).split('/')[1] || String(mime);
+  return part.replace(/^x-/, '').replace(/^H264$/i, 'H.264').replace(/^H265$/i, 'H.265');
+}
+function serverDisplay(server) {
+  try {
+    const u = new URL(server);
+    const path = u.pathname && u.pathname !== '/' ? u.pathname.replace(/\/+$/, '') : '';
+    return u.host + path;
+  } catch { return server || '—'; }
+}
+function makeSessionCode() {
+  const d = new Date();
+  const date = `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let suffix = '';
+  try {
+    const arr = new Uint8Array(4);
+    crypto.getRandomValues(arr);
+    suffix = Array.from(arr, b => alphabet[b % alphabet.length]).join('');
+  } catch {
+    suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
   }
-});
-
-const placeholder = document.getElementById('placeholder');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const rcvInfo = document.getElementById('rcvInfo');
-
-let pc = null;
-let retryTimer = null;
-
-function setStatus(state, label) {
-  statusDot.className = 'dot' + (state === 'live' ? ' live' : state === 'warn' ? ' warn' : '');
-  statusText.textContent = label;
+  return `TD-${date}-${suffix}`;
+}
+function setContextValue(el, value) {
+  if (!el) return;
+  const has = Boolean(value && String(value).trim());
+  el.textContent = has ? value : 'Sin asignar';
+  el.classList.toggle('is-empty', !has);
+}
+function setText(el, value) { if (el) el.textContent = value; }
+function setToday() {
+  const raw = new Intl.DateTimeFormat('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
+  setText(ui.todayLabel, raw.charAt(0).toUpperCase() + raw.slice(1));
 }
 
-async function connectToMediaMTX() {
-  if (pc) pc.close();
-  pc = new RTCPeerConnection();
-  
-  // En WHEP, el receptor crea la oferta para recibir (recvonly)
-  pc.addTransceiver('video', { direction: 'recvonly' });
+/* ── Configuración ──────────────────────────────────────────── */
+function loadConfig() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch { saved = {}; }
+  const cfg = { ...DEFAULTS, ...saved };
+  const params = new URLSearchParams(location.search);
+  ['server', 'stream', 'professional', 'procedure', 'room', 'notes'].forEach(key => {
+    if (params.has(key)) cfg[key] = params.get(key);
+  });
+  if (params.has('view')) cfg.vrView = params.get('view');
+  if (params.has('rotation')) cfg.rotation = Number(params.get('rotation'));
+  if (params.has('preview360')) cfg.preview360 = params.get('preview360') === '1';
+  if (params.has('awake')) cfg.keepAwake = params.get('awake') !== '0';
+  cfg.server = String(cfg.server || DEFAULTS.server).trim().replace(/\/+$/, '');
+  cfg.stream = String(cfg.stream || DEFAULTS.stream).trim().replace(/^\/+|\/+$/g, '');
+  cfg.professional = String(cfg.professional || '').slice(0, 80);
+  cfg.procedure = String(cfg.procedure || '').slice(0, 120);
+  cfg.room = String(cfg.room || '').slice(0, 60);
+  cfg.notes = String(cfg.notes || '').slice(0, 500);
+  if (!['sphere', 'flat'].includes(cfg.vrView)) cfg.vrView = DEFAULTS.vrView;
+  cfg.rotation = Number(cfg.rotation);
+  if (!Number.isFinite(cfg.rotation)) cfg.rotation = DEFAULTS.rotation;
+  cfg.keepAwake = cfg.keepAwake !== false;
+  cfg.preview360 = cfg.preview360 === true;
+  return cfg;
+}
+function saveConfig() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.config)); } catch { /* modo privado */ }
+}
+function applyConfigLabels() {
+  setText(ui.streamChip, state.config.stream || '—');
+  const server = serverDisplay(state.config.server);
+  setText(ui.serverLabel, server);
+  setText(ui.ctxServer, server);
+  if (ui.serverLabel) ui.serverLabel.title = state.config.server;
+  if (ui.ctxServer) ui.ctxServer.title = state.config.server;
+  setText(ui.sessionCode, state.sessionCode);
+  if (ui.cfgSessionCode) ui.cfgSessionCode.value = state.sessionCode;
+  setContextValue(ui.ctxProfessional, state.config.professional);
+  setContextValue(ui.ctxProcedure, state.config.procedure);
+  setContextValue(ui.ctxRoom, state.config.room);
+  applyRotation();
+}
+function applyRotation() {
+  if (ui.videoSphere) ui.videoSphere.setAttribute('rotation', `0 ${state.config.rotation} 0`);
+}
 
-  pc.ontrack = e => {
-    console.log('[receptor] track recibido', e.track.kind);
-    remoteVideo.srcObject = e.streams[0];
-    placeholder.classList.add('hidden');
-    rcvInfo.textContent = 'Conectado a MediaMTX';
-  };
+/* ── Inicialización ─────────────────────────────────────────── */
+function cacheUI() {
+  [
+    'todayLabel','connectionPill','connectionText','vrBtn','vrBtnLabel','fullscreenBtn','settingsBtn',
+    'alertBanner','alertTitle','alertText','alertSettingsBtn','alertCloseBtn','stage','remoteVideo',
+    'liveChip','liveChipText','streamChip','chipRes','chipFps','chipRtt','stageClock',
+    'viewBtn','viewBtnLabel','audioBtn','audioBtnLabel','reconnectBtn','fullscreenBtn2',
+    'placeholder','placeholderSpinner','placeholderTitle','placeholderText','placeholderRetry','placeholderSettings',
+    'sessionCode','sessionStartFact','sessionDuration','ctxProfessional','ctxProcedure','ctxRoom','ctxServer','editSessionBtn',
+    'qualityLabel','qualityBadge','qualityBar','qualityHint','connectedSince','uptime','reconnects','serverLabel',
+    'mRtt','mFps','mRes','mBitrate','mLoss','mJitter','dCodec','dIce','dBuffer','dDecode','dFrames','dDropped',
+    'dFreezes','dBytes','dSetup','dAudio','dPc','dIceState','chart','chartCurrent','eventLog','clearLogBtn',
+    'downloadJson','downloadCsv','settingsDialog','settingsForm','closeSettings','cancelSettings','resetConfig',
+    'cfgServer','cfgStream','cfgProfessional','cfgProcedure','cfgRoom','cfgSessionCode','cfgNotes','cfgViewMode',
+    'cfgRotation','cfgKeepAwake','serverHelp','mixedNote','xrStatus','wakeStatus','toast','vrScene','videoSphere',
+    'flatGroup','flatFrame','flatScreen','cameraRig','vrCamera','gazeCursor','vrHudRoot','vrHudVisual',
+    'vrNoSignalRoot','vrNoSignalVisual','leftController','rightController'
+  ].forEach(id => { ui[id] = $(id); });
+}
 
-  pc.onconnectionstatechange = () => {
-    console.log('[receptor] connectionState:', pc.connectionState);
-    if (pc.connectionState === 'connected') {
-      setStatus('live', 'Recibiendo');
-      clearTimeout(retryTimer);
-    } else if (['disconnected','failed','closed'].includes(pc.connectionState)) {
-      setStatus('warn', 'Desconectado, reintentando…');
-      rcvInfo.textContent = '—';
-      placeholder.classList.remove('hidden');
-      scheduleRetry();
+function init() {
+  cacheUI();
+  state.config = loadConfig();
+  state.preview360 = state.config.preview360;
+  state.sessionCode = makeSessionCode();
+  state.sessionStart = Date.now();
+  state.scene = ui.vrScene;
+  state.hudCtx = makeCanvas('hud');
+  state.noSignalCtx = makeCanvas('noSignal');
+  setToday();
+  setText(ui.sessionStartFact, fmtClock(new Date(state.sessionStart)));
+  applyConfigLabels();
+  updateVrButton();
+  updateAudioButton();
+  updateAlerts();
+  renderMetrics(null);
+  setQuality({ key: 'unknown', label: 'Conectando', score: null, hint: 'Estableciendo el enlace con la cámara remota.' });
+  bindEvents();
+  initScene();
+  detectXR();
+  initVideoEvents();
+  setStatus('connecting', 'Conectando…', 'CONECTANDO');
+  addEvent(`Receptor iniciado · ${APP.name}.`, 'info');
+  addEvent(`Servidor ${serverDisplay(state.config.server)} · stream «${state.config.stream}».`, 'info');
+  showPlaceholder('Conectando con la cámara', 'Estableciendo el enlace WebRTC con MediaMTX…', { spinner: true, retry: false, mode: 'connecting' });
+  drawChart();
+  drawHud();
+  drawNoSignal();
+  setInterval(tick, 1000);
+  tick();
+  connect();
+  window.addEventListener('resize', debounce(drawChart, 120));
+  document.addEventListener('pointerdown', requestWakeLock, { once: true, capture: true });
+}
+function makeCanvas(kind) {
+  const canvas = document.createElement('canvas');
+  canvas.width = kind === 'hud' ? HUD_W : 900;
+  canvas.height = kind === 'hud' ? HUD_H : 260;
+  return canvas.getContext('2d');
+}
+function debounce(fn, wait) {
+  let t = null;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+}
+
+/* ── Escena A-Frame y HUD del visor ─────────────────────────── */
+function initScene() {
+  if (!window.AFRAME || !ui.vrScene) {
+    addEvent('A-Frame no está disponible: el modo inmersivo queda deshabilitado.', 'error');
+    updateVrButton();
+    return;
+  }
+  ui.vrScene.addEventListener('enter-vr', onEnterVR);
+  ui.vrScene.addEventListener('exit-vr', onExitVR);
+  if (ui.vrScene.hasLoaded) onSceneLoaded();
+  else ui.vrScene.addEventListener('loaded', onSceneLoaded, { once: true });
+  setTimeout(() => {
+    if (!state.sceneReady) {
+      addEvent('La escena 3D no terminó de cargar.', 'warn');
+      updateVrButton();
     }
+  }, 12000);
+}
+function onSceneLoaded() {
+  if (state.sceneReady) return;
+  state.sceneReady = true;
+  state.scene = ui.vrScene;
+  setupCanvasTexture(ui.vrHudVisual, state.hudCtx.canvas, 'hud');
+  setupCanvasTexture(ui.vrNoSignalVisual, state.noSignalCtx.canvas, 'noSignal');
+  setupHudHitAreas();
+  applyRotation();
+  updateFlatScreenSize();
+  applyViewState();
+  drawHud();
+  drawNoSignal();
+  updateVrButton();
+  addEvent('Escena inmersiva lista.', 'success');
+  if (!state.preview360 && !state.inVR) pauseScene();
+}
+function setupCanvasTexture(entity, canvas, kind) {
+  if (!entity || !window.AFRAME) return;
+  const assign = () => {
+    const mesh = entity.getObject3D('mesh');
+    if (!mesh || !mesh.material || !window.AFRAME.THREE) return;
+    const THREE = window.AFRAME.THREE;
+    const texture = new THREE.CanvasTexture(canvas);
+    if (THREE.SRGBColorSpace && 'colorSpace' in texture) texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.anisotropy = 4;
+    mesh.material.map = texture;
+    mesh.material.transparent = true;
+    mesh.material.needsUpdate = true;
+    if (kind === 'hud') state.hudTexture = texture; else state.noSignalTexture = texture;
+    drawHud(); drawNoSignal();
   };
+  if (entity.getObject3D('mesh')) assign();
+  else entity.addEventListener('object3dset', assign, { once: true });
+  setTimeout(assign, 0);
+}
+function setupHudHitAreas() {
+  if (state.hudHitsReady || !ui.vrHudRoot) return;
+  state.hudHitsReady = true;
+  HUD_BUTTONS.forEach(btn => {
+    const hit = document.createElement('a-plane');
+    const w = (btn.w / HUD_W) * HUD_PLANE_W;
+    const h = (btn.h / HUD_H) * HUD_PLANE_H;
+    const x = ((btn.x + btn.w / 2) / HUD_W - 0.5) * HUD_PLANE_W;
+    const y = (0.5 - (btn.y + btn.h / 2) / HUD_H) * HUD_PLANE_H;
+    hit.classList.add('clickable');
+    hit.dataset.action = btn.action;
+    hit.setAttribute('width', w.toFixed(4));
+    hit.setAttribute('height', h.toFixed(4));
+    hit.setAttribute('position', `${x.toFixed(4)} ${y.toFixed(4)} 0.008`);
+    hit.setAttribute('material', 'shader: flat; transparent: true; opacity: 0.001; side: double');
+    hit.addEventListener('mouseenter', () => {
+      if (state.hudHover !== btn.action) { state.hudHover = btn.action; drawHud(); }
+    });
+    hit.addEventListener('mouseleave', () => {
+      if (state.hudHover === btn.action) { state.hudHover = null; drawHud(); }
+    });
+    hit.addEventListener('click', (ev) => { ev.stopPropagation(); handleHudAction(btn.action); });
+    ui.vrHudRoot.appendChild(hit);
+  });
+}
+function drawHud() {
+  const ctx = state.hudCtx;
+  if (!ctx) return;
+  const W = HUD_W, H = HUD_H;
+  ctx.clearRect(0, 0, W, H);
+  roundRect(ctx, 1, 1, W - 2, H - 2, 26);
+  ctx.fillStyle = 'rgba(7,24,41,.94)'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#2B4B67'; ctx.stroke();
+  ctx.save(); roundRect(ctx, 1, 1, W - 2, H - 2, 26); ctx.clip();
+  ctx.fillStyle = '#8CC63F'; ctx.fillRect(0, 0, W, 5); ctx.restore();
 
+  const live = state.connected && state.streamVisible;
+  const status = live ? { text: 'EN VIVO', color: '#8CC63F' }
+    : state.connecting ? { text: 'CONECTANDO', color: '#E0A526' }
+    : state.connected ? { text: 'SIN VIDEO', color: '#E0A526' }
+    : { text: 'SIN SEÑAL', color: '#E06666' };
+
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+  ctx.font = `700 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
+  ctx.fillText('TELEODONTOLOGÍA UFRO', 48, 44);
+
+  ctx.font = `700 18px ${FONT_SANS}`;
+  const statusW = ctx.measureText(status.text).width + 52;
+  const pillX = W - 48 - statusW;
+  roundRect(ctx, pillX, 26, statusW, 34, 17);
+  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fill();
+  ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(pillX + 20, 43, 5, 0, Math.PI * 2); ctx.fillStyle = status.color; ctx.fill();
+  ctx.fillStyle = status.color; ctx.fillText(status.text, pillX + 32, 44);
+
+  ctx.textAlign = 'left'; ctx.font = `700 14px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
+  ctx.fillText('TIEMPO DE SESIÓN', 48, 83);
+  ctx.font = `600 62px ${FONT_MONO}`; ctx.fillStyle = '#F3F8FC';
+  ctx.fillText(fmtDuration(state.sessionStart ? Date.now() - state.sessionStart : 0), 48, 140);
+
+  const m = state.stats;
+  ctx.textAlign = 'right';
+  ctx.font = `600 27px ${FONT_SANS}`; ctx.fillStyle = '#F3F8FC';
+  ctx.fillText(m && m.width ? `${m.width} × ${m.height}` : '—', W - 48, 105);
+  ctx.font = `500 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
+  ctx.fillText(`${m && m.fps != null ? Math.round(m.fps) + ' fps' : '— fps'}  ·  ${m && m.bitrateKbps != null ? NF1.format(m.bitrateKbps / 1000) + ' Mbps' : '— Mbps'}`, W - 48, 137);
+  ctx.font = `500 19px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
+  ctx.fillText(`RTT ${m && m.rttMs != null ? Math.round(m.rttMs) + ' ms' : '—'}  ·  Pérdida ${m && m.lossPct != null ? fmtLoss(m.lossPct) + ' %' : '—'}`, W - 48, 165);
+  ctx.font = `700 19px ${FONT_SANS}`; ctx.fillStyle = qualityColor(state.quality.key);
+  ctx.fillText(state.quality.label || 'Sin datos', W - 48, 195);
+
+  ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(48, 218); ctx.lineTo(W - 48, 218); ctx.stroke();
+  ctx.textAlign = 'left'; ctx.font = `700 13px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
+  ctx.fillText('CONTROLES', 48, 242);
+  HUD_BUTTONS.forEach(btn => drawHudButton(ctx, btn));
+  ctx.beginPath(); ctx.moveTo(48, 366); ctx.lineTo(W - 48, 366); ctx.stroke();
+
+  ctx.font = `500 15px ${FONT_SANS}`; ctx.fillStyle = '#708BA1'; ctx.textAlign = 'left';
+  ctx.fillText(`Sesión ${state.sessionCode}`, 48, 400);
+  ctx.textAlign = 'center'; ctx.fillText('Gatillo: seleccionar  ·  Mirada fija: 1 s', W / 2, 400);
+  ctx.textAlign = 'right'; ctx.fillText(`Hora ${fmtClock(new Date())}`, W - 48, 400);
+  ctx.font = `600 12px ${FONT_SANS}`; ctx.fillStyle = '#4C6B84'; ctx.textAlign = 'left';
+  ctx.fillText('UNIVERSIDAD DE LA FRONTERA · FRO2495', 48, 448);
+  ctx.textAlign = 'right'; ctx.fillText('RECEPCIÓN WHEP · WEBRTC', W - 48, 448);
+  if (state.hudTexture) state.hudTexture.needsUpdate = true;
+}
+function drawHudButton(ctx, btn) {
+  const hover = state.hudHover === btn.action;
+  const exit = btn.action === 'exit';
+  const fg = hover ? '#FFFFFF' : (exit ? '#F2A6A0' : '#EAF3FA');
+  roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 10);
+  ctx.fillStyle = hover ? (exit ? '#B3261E' : '#8CC63F') : (exit ? 'rgba(179,38,30,.14)' : 'rgba(255,255,255,.055)');
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = hover ? (exit ? '#B3261E' : '#8CC63F') : (exit ? 'rgba(224,102,102,.55)' : '#365772');
+  ctx.stroke();
+  drawHudIcon(ctx, btn.action, btn.x + 30, btn.y + btn.h / 2, fg);
+  ctx.font = `600 22px ${FONT_SANS}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = fg; ctx.fillText(hudButtonLabel(btn.action), btn.x + 56, btn.y + btn.h / 2 + 1);
+}
+function hudButtonLabel(action) {
+  if (action === 'recenter') return 'Recentrar';
+  if (action === 'exit') return 'Salir de VR';
+  return state.config.vrView === 'sphere' ? 'Vista plana' : 'Vista 360°';
+}
+function drawHudIcon(ctx, action, cx, cy, color) {
+  ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  if (action === 'recenter') {
+    ctx.beginPath(); ctx.arc(cx, cy, 8, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 12, cy); ctx.lineTo(cx - 9, cy); ctx.moveTo(cx + 9, cy); ctx.lineTo(cx + 12, cy);
+    ctx.moveTo(cx, cy - 12); ctx.lineTo(cx, cy - 9); ctx.moveTo(cx, cy + 9); ctx.lineTo(cx, cy + 12); ctx.stroke();
+  } else if (action === 'view') {
+    roundRect(ctx, cx - 11, cy - 7, 22, 14, 3); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(cx - 9, cy - 9); ctx.lineTo(cx - 9, cy + 9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 3, cy); ctx.lineTo(cx + 11, cy); ctx.moveTo(cx + 6, cy - 5); ctx.lineTo(cx + 11, cy); ctx.lineTo(cx + 6, cy + 5); ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawNoSignal() {
+  const ctx = state.noSignalCtx;
+  if (!ctx) return;
+  const W = 900, H = 260;
+  ctx.clearRect(0, 0, W, H);
+  roundRect(ctx, 1, 1, W - 2, H - 2, 22);
+  ctx.fillStyle = 'rgba(7,24,41,.95)'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = '#2B4B67'; ctx.stroke();
+  const connecting = state.connecting;
+  const stalled = state.stalled;
+  const color = connecting ? '#E0A526' : (state.connected ? '#E0A526' : '#E06666');
+  ctx.beginPath(); ctx.arc(42, 50, 7, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.font = `600 31px ${FONT_SANS}`; ctx.fillStyle = '#F3F8FC';
+  const title = connecting ? 'Conectando con la cámara' : stalled ? 'Sin flujo de video' : state.connected ? 'Recibiendo video' : 'Sin señal de la cámara';
+  ctx.fillText(title, 62, 50);
+  ctx.font = `500 19px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
+  const sub = connecting ? 'Estableciendo el enlace WebRTC con MediaMTX…'
+    : stalled ? 'El enlace está activo, pero no llegan cuadros de video.'
+    : state.connected ? 'Esperando el primer cuadro de la cámara…'
+    : 'Verifique el emisor y el servidor MediaMTX.';
+  ctx.fillText(sub, 42, 105);
+  ctx.font = `500 17px ${FONT_MONO}`; ctx.fillStyle = '#708BA1';
+  let line = 'Reconexión automática';
+  if (state.nextRetryAt) line = `Reintentando en ${Math.max(0, Math.ceil((state.nextRetryAt - Date.now()) / 1000))} s`;
+  else if (connecting) line = 'Negociación en curso';
+  else if (state.connected) line = 'Enlace WebRTC activo';
+  ctx.fillText(line, 42, 150);
+  ctx.font = `500 15px ${FONT_SANS}`; ctx.fillStyle = '#5C7890';
+  ctx.fillText('El panel inferior sigue disponible para salir de VR.', 42, 205);
+  ctx.textAlign = 'right'; ctx.fillText('UFRO · Teleodontología', W - 42, 205);
+  if (state.noSignalTexture) state.noSignalTexture.needsUpdate = true;
+}
+function roundRect(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+function qualityColor(key) {
+  return { excellent: '#8CC63F', good: '#A8D46A', fair: '#E0A526', poor: '#F07167', unknown: '#708BA1' }[key] || '#708BA1';
+}
+function handleHudAction(action) {
+  if (action === 'recenter') { resetLook(); addEvent('Vista del visor recentrada.', 'info'); }
+  else if (action === 'view') { toggleVrView(); }
+  else if (action === 'exit') { exitVR(); }
+}
+
+/* ── Modos de vista y VR ────────────────────────────────────── */
+function updateVrButton() {
+  if (!ui.vrBtn) return;
+  let label = 'Entrar en VR', disabled = false;
+  if (state.inVR) label = 'Salir de VR';
+  else if (!state.xrChecked) { label = 'Verificando visor…'; disabled = true; }
+  else if (!state.sceneReady) { label = window.AFRAME ? 'Preparando visor…' : 'VR no disponible'; disabled = true; }
+  else if (state.xrSupported) label = 'Entrar en VR';
+  else label = state.preview360 ? 'Vista plana' : 'Vista 360°';
+  setText(ui.vrBtnLabel, label);
+  ui.vrBtn.disabled = disabled;
+  ui.vrBtn.setAttribute('aria-label', label);
+  ui.vrBtn.title = state.xrSupported ? 'Entrar en el modo inmersivo de Meta Quest' : 'Explorar la vista 360° en este navegador';
+}
+function applyViewState() {
+  const sphere = state.streamVisible && (state.inVR ? state.config.vrView === 'sphere' : state.preview360);
+  const flat = state.streamVisible && state.inVR && state.config.vrView === 'flat';
+  if (ui.videoSphere) ui.videoSphere.setAttribute('visible', sphere);
+  if (ui.flatGroup) ui.flatGroup.setAttribute('visible', flat);
+  if (ui.vrNoSignalRoot) ui.vrNoSignalRoot.setAttribute('visible', !state.streamVisible && state.sceneReady);
+  if (ui.stage) ui.stage.classList.toggle('preview-360', state.preview360);
+  setText(ui.viewBtnLabel, state.preview360 ? 'Vista plana' : 'Vista 360°');
+  if (ui.viewBtn) ui.viewBtn.setAttribute('aria-label', state.preview360 ? 'Cambiar a vista plana' : 'Cambiar a vista 360 grados');
+  if (state.sceneReady) {
+    if (state.preview360 || state.inVR) playScene(); else pauseScene();
+  }
+  updateVrButton();
+  drawHud();
+  drawNoSignal();
+}
+function setStreamVisible(visible) {
+  const changed = state.streamVisible !== visible;
+  state.streamVisible = visible;
+  if (ui.stage) ui.stage.classList.toggle('has-signal', visible);
+  if (changed) applyViewState();
+}
+function updateStreamVisibility() {
+  const ready = state.connected && state.hasVideo && !state.stalled && ui.remoteVideo && ui.remoteVideo.readyState >= 2;
+  setStreamVisible(ready);
+  if (ready) hidePlaceholder();
+  else if (state.connected && state.stalled) {
+    showPlaceholder('Video detenido', 'El enlace sigue activo, pero no llegan cuadros nuevos. Se intentará recuperar el flujo.', { spinner: false, retry: true, mode: 'stalled' });
+  } else if (state.connected && !state.stalled) {
+    showPlaceholder('Recibiendo video', 'La cámara está conectada. Esperando el primer cuadro…', { spinner: true, retry: false, mode: 'waiting' });
+  }
+  refreshStatus();
+}
+function playScene() {
+  if (!state.sceneReady || !ui.vrScene) return;
+  try { if (typeof ui.vrScene.play === 'function') ui.vrScene.play(); state.scenePaused = false; } catch { /* opcional */ }
+}
+function pauseScene() {
+  if (!state.sceneReady || state.inVR || !ui.vrScene) return;
+  try { if (typeof ui.vrScene.pause === 'function') { ui.vrScene.pause(); state.scenePaused = true; } } catch { /* opcional */ }
+}
+function setGazeEnabled(enabled) {
+  if (!ui.gazeCursor || !state.sceneReady) return;
+  ui.gazeCursor.setAttribute('visible', enabled);
+  ui.gazeCursor.setAttribute('cursor', 'fuse', enabled);
+  ui.gazeCursor.setAttribute('raycaster', 'enabled', enabled);
+}
+function resetLook() {
+  const lc = ui.vrCamera && ui.vrCamera.components['look-controls'];
+  if (lc && lc.pitchObject && lc.yawObject) {
+    lc.pitchObject.rotation.x = 0;
+    lc.yawObject.rotation.y = 0;
+  } else if (ui.vrCamera) {
+    ui.vrCamera.setAttribute('rotation', '0 0 0');
+  }
+}
+function updateFlatScreenSize() {
+  if (!ui.flatScreen || !ui.flatFrame) return;
+  const vw = (ui.remoteVideo && ui.remoteVideo.videoWidth) || 16;
+  const vh = (ui.remoteVideo && ui.remoteVideo.videoHeight) || 9;
+  const aspect = vw / vh || 16 / 9;
+  const height = 1.35;
+  const width = Math.min(2.7, height * aspect);
+  const finalHeight = width / aspect;
+  ui.flatScreen.setAttribute('width', width.toFixed(3));
+  ui.flatScreen.setAttribute('height', finalHeight.toFixed(3));
+  ui.flatFrame.setAttribute('width', (width + 0.06).toFixed(3));
+  ui.flatFrame.setAttribute('height', (finalHeight + 0.06).toFixed(3));
+}
+function togglePreview360() {
+  if (!state.sceneReady) { showToast('La escena 360° aún se está preparando.', 'warn'); return; }
+  state.preview360 = !state.preview360;
+  state.config.preview360 = state.preview360;
+  saveConfig();
+  applyViewState();
+  if (state.preview360) showToast('Vista 360°. Arrastra para mirar alrededor.', 'info');
+}
+function toggleVrView() {
+  state.config.vrView = state.config.vrView === 'sphere' ? 'flat' : 'sphere';
+  saveConfig();
+  applyViewState();
+  addEvent(`Vista inmersiva: ${state.config.vrView === 'sphere' ? '360°' : 'pantalla plana'}.`, 'info');
+}
+async function enterVR() {
+  if (!state.sceneReady) { showToast('La escena inmersiva aún se está preparando.', 'warn'); return; }
+  if (!state.xrSupported) { togglePreview360(); return; }
   try {
+    playScene();
+    if (ui.remoteVideo && ui.remoteVideo.srcObject) { try { await ui.remoteVideo.play(); } catch { /* silencioso */ } }
+    requestWakeLock();
+    await ui.vrScene.enterVR();
+  } catch (err) {
+    addEvent(`No se pudo iniciar el modo inmersivo: ${err.message || err}`, 'error');
+    showToast('No se pudo iniciar el modo inmersivo. Verifique HTTPS y el visor.', 'error', 6000);
+  }
+}
+function exitVR() {
+  if (!state.inVR || !ui.vrScene) return;
+  try { ui.vrScene.exitVR(); } catch { /* ya salió */ }
+}
+function onEnterVR() {
+  state.inVR = true;
+  document.body.classList.add('vr-active');
+  setGazeEnabled(true);
+  applyViewState();
+  updateVrButton();
+  requestWakeLock();
+  addEvent('Modo inmersivo iniciado.', 'success');
+  drawHud();
+}
+function onExitVR() {
+  state.inVR = false;
+  document.body.classList.remove('vr-active');
+  setGazeEnabled(false);
+  applyViewState();
+  updateVrButton();
+  addEvent('Modo inmersivo finalizado.', 'info');
+}
+function detectXR() {
+  const finish = (supported) => {
+    state.xrSupported = supported;
+    state.xrChecked = true;
+    updateVrButton();
+    updateSettingsWarnings();
+  };
+  if (!window.isSecureContext) { finish(false); return; }
+  if (!navigator.xr) { finish(false); return; }
+  navigator.xr.isSessionSupported('immersive-vr').then(finish).catch(() => finish(false));
+}
+function initVideoEvents() {
+  const v = ui.remoteVideo;
+  if (!v) return;
+  v.addEventListener('loadedmetadata', onVideoReady);
+  v.addEventListener('loadeddata', onVideoReady);
+  v.addEventListener('resize', updateFlatScreenSize);
+  v.addEventListener('play', () => { updateStreamVisibility(); });
+  v.addEventListener('error', () => { addEvent('El elemento de video informó un error de reproducción.', 'warn'); });
+}
+function onVideoReady() {
+  if (!ui.remoteVideo || !ui.remoteVideo.videoWidth) return;
+  state.hasVideo = true;
+  updateFlatScreenSize();
+  if (state.connected) {
+    state.stalled = false; state.stallCount = 0;
+    updateStreamVisibility();
+  }
+}
+
+/* ── Interfaz de estado ─────────────────────────────────────── */
+function setStatus(kind, label, chipText) {
+  if (ui.connectionPill) ui.connectionPill.dataset.state = kind;
+  setText(ui.connectionText, label);
+  const chips = { live: 'EN VIVO', connecting: 'CONECTANDO', warn: 'SIN SEÑAL', offline: 'SIN CONEXIÓN', idle: 'EN ESPERA' };
+  if (ui.liveChip) ui.liveChip.dataset.state = kind;
+  setText(ui.liveChipText, chipText || chips[kind] || 'EN ESPERA');
+}
+function setQuality(q) {
+  state.quality = q;
+  setText(ui.qualityLabel, q.label || 'Sin datos');
+  if (ui.qualityBadge) {
+    ui.qualityBadge.textContent = q.score == null ? '—' : `${Math.round(q.score)}/100`;
+    ui.qualityBadge.dataset.quality = q.key || 'unknown';
+  }
+  if (ui.qualityBar) {
+    ui.qualityBar.style.width = `${q.score == null ? 0 : clamp(q.score, 0, 100)}%`;
+    ui.qualityBar.style.background = qualityColor(q.key);
+  }
+  setText(ui.qualityHint, q.hint || '');
+}
+function showPlaceholder(title, message, opts = {}) {
+  if (!ui.placeholder) return;
+  ui.placeholder.hidden = false;
+  setText(ui.placeholderTitle, title);
+  setText(ui.placeholderText, message);
+  if (ui.placeholderSpinner) ui.placeholderSpinner.hidden = !opts.spinner;
+  if (ui.placeholderRetry) ui.placeholderRetry.hidden = opts.retry === false;
+  state.placeholderMode = opts.mode || 'default';
+}
+function hidePlaceholder() {
+  if (ui.placeholder) ui.placeholder.hidden = true;
+  state.placeholderMode = 'none';
+}
+function updateAudioButton() {
+  if (!ui.audioBtn) return;
+  ui.audioBtn.disabled = !state.hasAudio;
+  setText(ui.audioBtnLabel, !state.hasAudio ? 'Sin audio' : (state.audioEnabled ? 'Silenciar' : 'Activar audio'));
+  ui.audioBtn.setAttribute('aria-label', !state.hasAudio ? 'Sin pista de audio' : (state.audioEnabled ? 'Silenciar audio' : 'Activar audio'));
+}
+function updateReconnects() { setText(ui.reconnects, String(Math.max(0, state.attempts - 1))); }
+function updateAlerts() {
+  if (!ui.alertBanner) return;
+  let title = '', text = '';
+  const httpsPage = location.protocol === 'https:';
+  const httpServer = /^http:\/\//i.test(state.config.server || '');
+  if (httpsPage && httpServer) {
+    title = 'Conexión bloqueada por contenido mixto';
+    text = 'La página usa HTTPS, pero el servidor WHEP está configurado en HTTP. El navegador bloqueará el video. Use un servidor HTTPS o un proxy inverso.';
+  } else if (!window.isSecureContext) {
+    title = 'Modo inmersivo limitado en Meta Quest 2';
+    text = 'Para entrar en VR, esta página debe servirse por HTTPS. La recepción 2D sigue disponible.';
+  }
+  if (!title || state.alertDismissed) { ui.alertBanner.hidden = true; return; }
+  setText(ui.alertTitle, title);
+  setText(ui.alertText, text);
+  ui.alertBanner.hidden = false;
+}
+/* ── Ciclo de conexión WHEP ─────────────────────────────────── */
+async function connect() {
+  if (state.connecting) return;
+  clearTimeout(state.retryTimer);
+  state.retryTimer = null;
+  state.nextRetryAt = null;
+  state.lastErrorReason = '';
+
+  const gen = ++state.generation;
+  state.connecting = true;
+  state.attempts += 1;
+  state.stalled = false;
+  state.stallReconnect = false;
+  state.whepSetupMs = null;
+  updateReconnects();
+
+  setStatus('connecting', 'Conectando…', 'CONECTANDO');
+  setQuality({ key: 'unknown', label: 'Conectando', score: null, hint: 'Estableciendo el enlace con la cámara remota.' });
+  showPlaceholder('Conectando con la cámara', 'Estableciendo el enlace WebRTC con MediaMTX…', { spinner: true, retry: false, mode: 'connecting' });
+  resetVideo();
+  resetStatsBaseline();
+
+  const target = `${serverDisplay(state.config.server)}/${state.config.stream}`;
+  addEvent(`Intento de conexión #${state.attempts} · ${target}.`, 'info');
+  const started = performance.now();
+
+  let pc = null;
+  try {
+    pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
+    state.pc = pc;
+    pc.addTransceiver('video', { direction: 'recvonly' });
+    pc.addTransceiver('audio', { direction: 'recvonly' });
+
+    pc.ontrack = (ev) => {
+      if (state.pc !== pc || gen !== state.generation) return;
+      const video = ui.remoteVideo;
+      if (!video) return;
+      let stream = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+      if (!stream.getTracks().some(t => t.id === ev.track.id)) stream.addTrack(ev.track);
+      video.srcObject = stream;
+      if (ev.track.kind === 'audio') {
+        const first = !state.hasAudio;
+        state.hasAudio = true;
+        updateAudioButton();
+        if (first) addEvent('Pista de audio recibida.', 'info');
+      } else if (ev.track.kind === 'video') {
+        if (!state.hasVideo) addEvent('Pista de video recibida.', 'success');
+      }
+      const played = video.play();
+      if (played && typeof played.catch === 'function') {
+        played.catch((err) => {
+          if (state.autoplayWarned) return;
+          state.autoplayWarned = true;
+          addEvent(`El navegador no inició la reproducción automática: ${err.message || err}`, 'warn');
+        });
+      }
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (state.pc !== pc || gen !== state.generation) return;
+      const connectionState = pc.connectionState || '—';
+      state.pcState = connectionState;
+      if (connectionState === 'connected') {
+        clearTimeout(state.connectTimeout);
+        clearTimeout(state.disconnectTimer);
+        state.connectTimeout = null;
+        state.disconnectTimer = null;
+        if (!state.connected) {
+          state.connected = true;
+          state.connecting = false;
+          state.retryAttempt = 0;
+          state.nextRetryAt = null;
+          state.stalled = false;
+          state.stallReconnect = false;
+          state.lastFrameAt = Date.now();
+          if (!state.connectedAt) state.connectedAt = Date.now();
+          addEvent('Enlace WebRTC conectado.', 'success');
+        }
+        refreshStatus();
+        updateStreamVisibility();
+        drawHud();
+        drawNoSignal();
+      } else if (connectionState === 'disconnected') {
+        clearTimeout(state.disconnectTimer);
+        state.disconnectTimer = setTimeout(() => {
+          if (state.pc !== pc || gen !== state.generation) return;
+          if (pc.connectionState === 'disconnected') {
+            addEvent('La conexión se interrumpió; se reintentará.', 'warn');
+            scheduleRetry('La conexión WebRTC se interrumpió.');
+          }
+        }, 5000);
+        refreshStatus();
+      } else if (connectionState === 'failed' || connectionState === 'closed') {
+        if (state.pc !== pc) return;
+        addEvent(`La conexión WebRTC pasó a estado ${connectionState}.`, 'error');
+        scheduleRetry('La conexión WebRTC falló.');
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (state.pc !== pc || gen !== state.generation) return;
+      state.iceState = pc.iceConnectionState || '—';
+      if (state.iceState === 'failed') {
+        addEvent('La ruta ICE falló.', 'error');
+        scheduleRetry('No fue posible establecer la ruta ICE.');
+      }
+    };
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    await waitForIce(pc, 2500);
+    if (state.pc !== pc || gen !== state.generation) return;
 
-    // Esperar a los candidatos ICE
-    await new Promise((resolve) => {
-      if (pc.iceGatheringState === 'complete') {
-        resolve();
-      } else {
-        const checkState = () => {
-          if (pc.iceGatheringState === 'complete') {
-            pc.removeEventListener('icegatheringstatechange', checkState);
-            resolve();
-          }
-        };
-        pc.addEventListener('icegatheringstatechange', checkState);
-        setTimeout(() => {
-          pc.removeEventListener('icegatheringstatechange', checkState);
-          resolve();
-        }, 2000);
-      }
-    });
-
-    console.log('[receptor] solicitando stream a MediaMTX...');
-    const res = await fetch(`${MEDIAMTX_URL}/${STREAM_NAME}/whep`, {
+    state.abortController = new AbortController();
+    const whepUrl = `${state.config.server}/${state.config.stream}/whep`;
+    const res = await fetch(whepUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/sdp' },
-      body: pc.localDescription.sdp
+      headers: { 'Content-Type': 'application/sdp', 'Accept': 'application/sdp' },
+      body: pc.localDescription.sdp,
+      signal: state.abortController.signal
     });
+    if (state.pc !== pc || gen !== state.generation) return;
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.text()).trim().slice(0, 160); } catch { /* sin cuerpo */ }
+      throw new Error(`El servidor WHEP respondió ${res.status}${detail ? ` · ${detail}` : ''}.`);
+    }
 
-    if (!res.ok) throw new Error(`Servidor respondió: ${res.status}`);
-    
-    const answerSDP = await res.text();
-    await pc.setRemoteDescription({ type: 'answer', sdp: answerSDP });
-    
+    const location = res.headers.get('Location');
+    if (location) {
+      try { state.whepResource = new URL(location, whepUrl).href; } catch { state.whepResource = location; }
+    }
+    const answer = (await res.text()).trim();
+    if (!answer) throw new Error('El servidor WHEP devolvió una respuesta SDP vacía.');
+    state.abortController = null;
+    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    if (state.pc !== pc || gen !== state.generation) return;
+
+    state.whepSetupMs = Math.round(performance.now() - started);
+    state.pcState = pc.connectionState || '—';
+    state.iceState = pc.iceConnectionState || '—';
+    addEvent(`WHEP negociado en ${state.whepSetupMs} ms.`, 'success');
+    renderMetrics(state.stats);
+    showPlaceholder('Estableciendo enlace', 'MediaMTX aceptó la oferta. Esperando el primer cuadro de la cámara…', { spinner: true, retry: false, mode: 'connecting' });
+
+    clearTimeout(state.connectTimeout);
+    state.connectTimeout = setTimeout(() => {
+      if (state.pc !== pc || gen !== state.generation) return;
+      if (!state.connected && !state.retryTimer) {
+        addEvent('La negociación no completó el enlace a tiempo.', 'warn');
+        scheduleRetry('Se agotó el tiempo de espera al establecer el enlace.');
+      }
+    }, 15000);
   } catch (err) {
-    console.warn('[receptor] Fallo al conectar, reintentando en 2s...', err);
-    scheduleRetry();
+    if (state.pc !== pc || gen !== state.generation) return;
+    const message = err && err.name === 'AbortError'
+      ? 'Conexión cancelada.'
+      : (err && err.message ? err.message : String(err || 'Error desconocido'));
+    state.lastErrorReason = message;
+    scheduleRetry(`No se pudo conectar: ${message}`, 'error');
   }
 }
 
-function scheduleRetry() {
-  clearTimeout(retryTimer);
-  retryTimer = setTimeout(connectToMediaMTX, 2000);
+function waitForIce(pc, timeout = 2500) {
+  return new Promise((resolve) => {
+    if (!pc || pc.iceGatheringState === 'complete') { resolve(); return; }
+    let settled = false;
+    const done = () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      pc.removeEventListener('icegatheringstatechange', check);
+      resolve();
+    };
+    const check = () => { if (pc.iceGatheringState === 'complete') done(); };
+    const timer = setTimeout(done, timeout);
+    pc.addEventListener('icegatheringstatechange', check);
+  });
 }
 
-// Iniciar proceso
-setStatus('warn', 'Conectando a MediaMTX…');
-connectToMediaMTX();
+function cleanupPeer(deleteResource = true) {
+  clearTimeout(state.connectTimeout);
+  state.connectTimeout = null;
+  clearTimeout(state.disconnectTimer);
+  state.disconnectTimer = null;
+
+  if (state.abortController) {
+    try { state.abortController.abort(); } catch { /* ya finalizó */ }
+    state.abortController = null;
+  }
+
+  const pc = state.pc;
+  state.pc = null;
+  if (pc) {
+    pc.onconnectionstatechange = null;
+    pc.oniceconnectionstatechange = null;
+    pc.ontrack = null;
+    try { pc.close(); } catch { /* ya cerrada */ }
+  }
+
+  const resource = state.whepResource;
+  state.whepResource = null;
+  if (deleteResource && resource) {
+    try { fetch(resource, { method: 'DELETE', keepalive: true }).catch(() => {}); } catch { /* sin CORS */ }
+  }
+}
+
+function resetVideo() {
+  const video = ui.remoteVideo;
+  if (!video) return;
+  const hadSource = Boolean(video.srcObject || video.getAttribute('src'));
+  try { video.pause(); } catch { /* sin reproducción */ }
+  const stream = video.srcObject;
+  if (stream && typeof stream.getTracks === 'function') {
+    stream.getTracks().forEach(track => { try { track.stop(); } catch { /* ya detenida */ } });
+  }
+  video.srcObject = null;
+  video.muted = true;
+  if (hadSource) {
+    video.removeAttribute('src');
+    try { video.load(); } catch { /* opcional */ }
+  }
+  state.hasVideo = false;
+  state.hasAudio = false;
+  state.audioEnabled = false;
+  updateAudioButton();
+  setStreamVisible(false);
+}
+
+function resetStatsBaseline() {
+  state.stats = null;
+  state.history = emptyHistory();
+  state.lastBytes = 0;
+  state.lastFrames = 0;
+  state.lastStatsAt = 0;
+  state.lastFrameValue = 0;
+  state.lastFrameAt = 0;
+  state.lastWidth = 0;
+  state.lastQualityKey = 'unknown';
+  state.lastFreezeLogged = 0;
+  state.codec = '—';
+  state.audioCodec = '—';
+  state.iceRoute = '—';
+  state.bufferMs = null;
+  state.decodeMs = null;
+  state.freezes = 0;
+  state.freezeSeconds = 0;
+  state.framesDecoded = 0;
+  state.framesDropped = 0;
+  state.bytesReceived = 0;
+  state.packetsLost = 0;
+  state.packetsReceived = 0;
+  state.pcState = '—';
+  state.iceState = '—';
+  state.stallCount = 0;
+  state.stalled = false;
+  state.stallReconnect = false;
+  renderMetrics(null);
+  drawChart();
+}
+
+function markDisconnected(reason) {
+  clearTimeout(state.connectTimeout);
+  state.connectTimeout = null;
+  clearTimeout(state.disconnectTimer);
+  state.disconnectTimer = null;
+
+  if (state.connectedAt) {
+    state.connectedAccumMs += Math.max(0, Date.now() - state.connectedAt);
+    state.connectedAt = null;
+  }
+  state.connected = false;
+  state.connecting = false;
+  state.stalled = false;
+  state.stallReconnect = false;
+  state.stats = null;
+
+  resetVideo();
+  setQuality({ key: 'poor', label: 'Sin conexión', score: 0, hint: reason || 'Sin enlace con la cámara remota.' });
+  renderMetrics(null);
+  refreshStatus();
+  drawHud();
+  drawNoSignal();
+}
+
+function refreshStatus() {
+  if (state.connected) {
+    const unstable = state.pcState === 'disconnected' || state.iceState === 'disconnected';
+    if (state.stalled || state.pcState === 'failed') setStatus('warn', 'Video detenido', 'SIN VIDEO');
+    else if (unstable) setStatus('warn', 'Reconectando…', 'RECONECTANDO');
+    else if (state.streamVisible) setStatus('live', 'En vivo', 'EN VIVO');
+    else setStatus('warn', 'Conectado · esperando video', 'SIN VIDEO');
+  } else if (state.connecting) {
+    setStatus('connecting', 'Conectando…', 'CONECTANDO');
+  } else if (state.nextRetryAt) {
+    const left = Math.max(0, Math.ceil((state.nextRetryAt - Date.now()) / 1000));
+    setStatus('offline', `Reintentando en ${left} s`, 'SIN CONEXIÓN');
+  } else {
+    setStatus('offline', 'Sin conexión', 'SIN CONEXIÓN');
+  }
+}
+
+function scheduleRetry(reason, kind = 'warn') {
+  if (state.retryTimer) return;
+
+  cleanupPeer(true);
+  markDisconnected(reason);
+
+  state.retryAttempt += 1;
+  const delay = Math.min(30000, 2000 * Math.pow(2, Math.min(state.retryAttempt - 1, 4)));
+  state.nextRetryAt = Date.now() + delay;
+  state.lastErrorReason = reason || 'Sin conexión con la cámara remota.';
+
+  if (reason) addEvent(reason, kind);
+  const seconds = Math.round(delay / 1000);
+  const prefix = reason ? `${reason.replace(/[.]+$/, '')}. ` : '';
+  showPlaceholder('Sin conexión con la cámara', `${prefix}Reintentando automáticamente en ${seconds} s. Verifique el emisor y el servidor MediaMTX.`, {
+    spinner: false, retry: true, mode: 'offline'
+  });
+  refreshStatus();
+  drawHud();
+  drawNoSignal();
+
+  state.retryTimer = setTimeout(() => {
+    state.retryTimer = null;
+    state.nextRetryAt = null;
+    connect();
+  }, delay);
+}
+
+function reconnectNow(reason = 'Reconexión manual solicitada.') {
+  state.generation += 1;
+  clearTimeout(state.retryTimer);
+  state.retryTimer = null;
+  state.nextRetryAt = null;
+  state.retryAttempt = 0;
+  cleanupPeer(true);
+  resetVideo();
+  markDisconnected(null);
+  state.connecting = false;
+  addEvent(reason, 'info');
+  connect();
+}
+
+/* ── Telemetría WebRTC ──────────────────────────────────────── */
+function candidateLabel(type) {
+  return { host: 'host', srflx: 'STUN', prflx: 'P2P', relay: 'TURN' }[type] || type || '—';
+}
+function connectionLabel(value) {
+  return {
+    connected: 'Conectado', connecting: 'Conectando', disconnected: 'Desconectado',
+    failed: 'Fallido', closed: 'Cerrado', new: 'Nuevo', checking: 'Verificando',
+    completed: 'Completado', '—': '—'
+  }[value] || value || '—';
+}
+
+async function collectStats() {
+  const pc = state.pc;
+  if (!pc) return;
+  let report;
+  try { report = await pc.getStats(); } catch { return; }
+  if (state.pc !== pc) return;
+
+  const map = new Map();
+  const list = [];
+  report.forEach((entry) => { map.set(entry.id, entry); list.push(entry); });
+
+  const videoEntries = list.filter(s => s.type === 'inbound-rtp' && (s.kind === 'video' || s.mediaType === 'video'));
+  const audioEntries = list.filter(s => s.type === 'inbound-rtp' && (s.kind === 'audio' || s.mediaType === 'audio'));
+  const inVideo = videoEntries.sort((a, b) => (b.bytesReceived || 0) - (a.bytesReceived || 0))[0] || null;
+  const inAudio = audioEntries[0] || null;
+  const transport = list.find(s => s.type === 'transport') || null;
+  let pair = null;
+  if (transport && transport.selectedCandidatePairId) pair = map.get(transport.selectedCandidatePairId) || null;
+  if (!pair) pair = list.find(s => s.type === 'candidate-pair' && s.state === 'succeeded' && (s.nominated || s.selected)) || null;
+  if (!pair) pair = list.find(s => s.type === 'candidate-pair' && s.state === 'succeeded') || null;
+  const remoteInbound = list.find(s => s.type === 'remote-inbound-rtp' && (s.kind === 'video' || s.mediaType === 'video')) || null;
+
+  const nowPerf = performance.now();
+  const dtSec = state.lastStatsAt ? (nowPerf - state.lastStatsAt) / 1000 : 0;
+  const bytes = inVideo ? Math.max(0, Number(inVideo.bytesReceived) || 0) : 0;
+  let bitrateKbps = null;
+  if (inVideo && state.lastStatsAt && dtSec > 0.2 && dtSec < 5 && bytes >= state.lastBytes) {
+    bitrateKbps = ((bytes - state.lastBytes) * 8 / 1000) / dtSec;
+  }
+
+  const frames = inVideo ? Math.max(0, Number(inVideo.framesDecoded) || 0) : 0;
+  const deltaFrames = frames - state.lastFrames;
+  let fps = null;
+  const reportedFps = inVideo ? Number(inVideo.framesPerSecond) : NaN;
+  if (Number.isFinite(reportedFps) && reportedFps > 0) fps = reportedFps;
+  else if (inVideo && state.lastStatsAt && dtSec > 0.2 && dtSec < 5 && deltaFrames >= 0) fps = deltaFrames / dtSec;
+  if (fps != null) fps = clamp(fps, 0, 240);
+
+  const width = inVideo && Number(inVideo.frameWidth) ? Number(inVideo.frameWidth) : null;
+  const height = inVideo && Number(inVideo.frameHeight) ? Number(inVideo.frameHeight) : null;
+  const lost = inVideo ? Math.max(0, Number(inVideo.packetsLost) || 0) : 0;
+  const received = inVideo ? Math.max(0, Number(inVideo.packetsReceived) || 0) : 0;
+  const lossPct = inVideo && (lost + received) > 0 ? (lost / (lost + received)) * 100 : null;
+  const jitterMs = inVideo && Number.isFinite(inVideo.jitter) ? inVideo.jitter * 1000 : null;
+  const rttMs = pair && Number.isFinite(pair.currentRoundTripTime)
+    ? pair.currentRoundTripTime * 1000
+    : (remoteInbound && Number.isFinite(remoteInbound.roundTripTime) ? remoteInbound.roundTripTime * 1000 : null);
+
+  const totalDecode = inVideo ? Number(inVideo.totalDecodeTime) : NaN;
+  const decodeMs = inVideo && frames > 0 && Number.isFinite(totalDecode) ? (totalDecode / frames) * 1000 : null;
+  const totalBuffer = inVideo ? Number(inVideo.jitterBufferDelay) : NaN;
+  const bufferCount = inVideo ? Number(inVideo.jitterBufferEmittedCount) : NaN;
+  const bufferMs = Number.isFinite(totalBuffer) && Number.isFinite(bufferCount) && bufferCount > 0
+    ? (totalBuffer / bufferCount) * 1000
+    : null;
+
+  const freezes = inVideo ? Math.max(0, Number(inVideo.freezeCount) || 0) : 0;
+  const freezeSeconds = inVideo ? Math.max(0, Number(inVideo.totalFreezesDuration) || 0) : 0;
+  const framesDropped = inVideo ? Math.max(0, Number(inVideo.framesDropped) || 0) : 0;
+
+  if (inVideo) {
+    const codec = inVideo.codecId ? map.get(inVideo.codecId) : null;
+    if (codec && codec.mimeType) state.codec = fmtCodec(codec.mimeType);
+  }
+  if (inAudio) {
+    const codec = inAudio.codecId ? map.get(inAudio.codecId) : null;
+    if (codec && codec.mimeType) state.audioCodec = fmtCodec(codec.mimeType);
+  }
+
+  if (pair) {
+    const local = pair.localCandidateId ? map.get(pair.localCandidateId) : null;
+    const remote = pair.remoteCandidateId ? map.get(pair.remoteCandidateId) : null;
+    if (local && remote) {
+      state.iceRoute = `${candidateLabel(local.candidateType)} → ${candidateLabel(remote.candidateType)} · ${String(pair.protocol || 'udp').toUpperCase()}`;
+    }
+  }
+
+  state.lastStatsAt = nowPerf;
+  state.lastBytes = bytes;
+  state.lastFrames = frames;
+  state.lastWidth = width || 0;
+  state.bufferMs = bufferMs;
+  state.decodeMs = decodeMs;
+  state.freezes = freezes;
+  state.freezeSeconds = freezeSeconds;
+  state.framesDecoded = frames;
+  state.framesDropped = framesDropped;
+  state.bytesReceived = bytes;
+  state.packetsLost = lost;
+  state.packetsReceived = received;
+  state.pcState = pc.connectionState || state.pcState;
+  state.iceState = pc.iceConnectionState || state.iceState;
+  state.hasAudio = state.hasAudio || Boolean(inAudio);
+  updateAudioButton();
+
+  const stats = {
+    width, height, fps, rttMs, jitterMs, lossPct, bitrateKbps,
+    decodeMs, bufferMs, framesDecoded: frames, framesDropped, freezes,
+    freezeSeconds, bytesReceived: bytes, packetsLost: lost, packetsReceived: received,
+    timestamp: Date.now()
+  };
+  state.stats = stats;
+
+  if (freezes > state.lastFreezeLogged) {
+    const increase = freezes - state.lastFreezeLogged;
+    state.lastFreezeLogged = freezes;
+    if (freezes <= 5) addEvent(`Congelamiento de video detectado (${increase}).`, 'warn');
+  }
+
+  let retryForStall = false;
+  const frameNow = Date.now();
+  if (frames > state.lastFrameValue) {
+    state.lastFrameValue = frames;
+    state.lastFrameAt = frameNow;
+    if (state.stalled) {
+      state.stalled = false;
+      state.stallReconnect = false;
+      addEvent('Se restableció el flujo de video.', 'success');
+      updateStreamVisibility();
+    }
+  } else if (frames > 0 && state.lastFrameAt && frameNow - state.lastFrameAt > 6000) {
+    if (!state.stalled) {
+      state.stalled = true;
+      state.stallCount += 1;
+      addEvent('No se reciben cuadros nuevos desde hace 6 s.', 'warn');
+      updateStreamVisibility();
+    }
+    if (!state.stallReconnect && frameNow - state.lastFrameAt > 18000 && !document.hidden) {
+      state.stallReconnect = true;
+      retryForStall = true;
+    }
+  }
+
+  const quality = computeQuality(stats);
+  if (quality.key === 'poor' && state.quality.key !== 'poor' && Date.now() - state.lastQualityLogAt > 20000) {
+    addEvent('La calidad del enlace pasó a deficiente.', 'warn');
+    state.lastQualityLogAt = Date.now();
+  } else if (state.quality.key === 'poor' && quality.key !== 'poor' && Date.now() - state.lastQualityLogAt > 20000) {
+    addEvent('La calidad del enlace se recuperó.', 'success');
+    state.lastQualityLogAt = Date.now();
+  }
+  state.lastQualityKey = quality.key;
+  setQuality(quality);
+
+  renderMetrics(stats);
+  pushHistory();
+  recordMetrics();
+  drawHud();
+  if (!state.streamVisible) drawNoSignal();
+
+  if (retryForStall) {
+    addEvent('El video dejó de actualizarse; se reiniciará el enlace.', 'warn');
+    scheduleRetry('El flujo de video se detuvo.');
+  }
+}
+
+function computeQuality(stats) {
+  if (!stats || stats.width == null) {
+    return { key: 'unknown', label: 'Midiendo', score: null, hint: 'Esperando muestras de video del enlace.' };
+  }
+  if (state.stalled) {
+    return { key: 'poor', label: 'Deficiente', score: 10, hint: 'El enlace está activo, pero el video no se está actualizando.' };
+  }
+
+  let score = 100;
+  const issues = [];
+  if (stats.rttMs != null) {
+    if (stats.rttMs > 350) { score -= 30; issues.push('RTT muy alto'); }
+    else if (stats.rttMs > 180) { score -= 18; issues.push('RTT alto'); }
+    else if (stats.rttMs > 90) { score -= 7; }
+  }
+  if (stats.lossPct != null) {
+    if (stats.lossPct > 5) { score -= 35; issues.push('pérdida de paquetes'); }
+    else if (stats.lossPct > 2) { score -= 22; issues.push('pérdida de paquetes'); }
+    else if (stats.lossPct > 0.5) { score -= 10; issues.push('pérdida leve'); }
+    else if (stats.lossPct > 0.05) { score -= 3; }
+  }
+  if (stats.jitterMs != null) {
+    if (stats.jitterMs > 100) { score -= 12; issues.push('jitter alto'); }
+    else if (stats.jitterMs > 50) { score -= 6; issues.push('jitter elevado'); }
+    else if (stats.jitterMs > 25) { score -= 3; }
+  }
+  if (stats.fps != null) {
+    if (stats.fps < 10) { score -= 25; issues.push('FPS muy bajo'); }
+    else if (stats.fps < 18) { score -= 15; issues.push('FPS bajo'); }
+    else if (stats.fps < 24) { score -= 6; issues.push('FPS bajo'); }
+  }
+  if (stats.bitrateKbps != null) {
+    if (stats.bitrateKbps < 500) { score -= 20; issues.push('bitrate insuficiente'); }
+    else if (stats.bitrateKbps < 1500) { score -= 8; issues.push('bitrate bajo'); }
+  }
+
+  score = Math.round(clamp(score, 0, 100));
+  let key = 'poor';
+  if (score >= 85) key = 'excellent';
+  else if (score >= 70) key = 'good';
+  else if (score >= 50) key = 'fair';
+
+  const labels = { excellent: 'Excelente', good: 'Buena', fair: 'Aceptable', poor: 'Deficiente' };
+  const unique = [...new Set(issues)];
+  const detail = unique.length ? ` Factores: ${unique.join(', ')}.` : '';
+  const hints = {
+    excellent: 'Enlace estable, adecuado para supervisión clínica en vivo.',
+    good: 'Enlace estable con variaciones menores.',
+    fair: 'Enlace utilizable; revise los factores señalados si persisten.',
+    poor: 'Enlace limitado para teleodontología. Revise red, emisor y servidor.'
+  };
+  return { key, label: labels[key], score, hint: hints[key] + detail };
+}
+
+function uptimePct(now = Date.now()) {
+  if (!state.sessionStart) return 0;
+  const total = now - state.sessionStart;
+  if (total <= 0) return 0;
+  const connected = state.connectedAccumMs + (state.connectedAt ? now - state.connectedAt : 0);
+  return clamp((connected / total) * 100, 0, 100);
+}
+
+function renderMetrics(stats) {
+  const has = Boolean(stats);
+  setText(ui.mRtt, has && stats.rttMs != null ? NF0.format(stats.rttMs) : '—');
+  setText(ui.mFps, has && stats.fps != null ? NF0.format(stats.fps) : '—');
+  setText(ui.mRes, has && stats.width && stats.height ? `${stats.width} × ${stats.height}` : '—');
+  setText(ui.mBitrate, has && stats.bitrateKbps != null ? NF2.format(stats.bitrateKbps / 1000) : '—');
+  setText(ui.mLoss, has && stats.lossPct != null ? fmtLoss(stats.lossPct) : '—');
+  setText(ui.mJitter, has && stats.jitterMs != null ? NF1.format(stats.jitterMs) : '—');
+
+  setText(ui.chipRes, has && stats.width && stats.height ? `${stats.width}×${stats.height}` : '—');
+  setText(ui.chipFps, has && stats.fps != null ? `${NF0.format(stats.fps)} fps` : '—');
+  setText(ui.chipRtt, has && stats.rttMs != null ? `RTT ${NF0.format(stats.rttMs)} ms` : '—');
+
+  setText(ui.dCodec, state.codec);
+  setText(ui.dIce, state.iceRoute);
+  setText(ui.dBuffer, state.bufferMs != null ? `${NF0.format(state.bufferMs)} ms` : '—');
+  setText(ui.dDecode, state.decodeMs != null ? `${NF1.format(state.decodeMs)} ms` : '—');
+  setText(ui.dFrames, has ? NF0.format(state.framesDecoded) : '—');
+  setText(ui.dDropped, has ? NF0.format(state.framesDropped) : '—');
+  setText(ui.dFreezes, has ? (state.freezes ? `${NF0.format(state.freezes)} · ${NF1.format(state.freezeSeconds)} s` : '0') : '—');
+  setText(ui.dBytes, has ? fmtBytes(state.bytesReceived) : '—');
+  setText(ui.dSetup, state.whepSetupMs != null ? `${NF0.format(state.whepSetupMs)} ms` : '—');
+  setText(ui.dAudio, state.hasAudio ? `${state.audioCodec}${state.audioEnabled ? ' · audible' : ' · silenciado'}` : 'Sin pista');
+  setText(ui.dPc, connectionLabel(state.pcState));
+  setText(ui.dIceState, connectionLabel(state.iceState));
+}
+
+function pushHistory() {
+  const stats = state.stats;
+  const target = state.history;
+  const push = (key, value) => {
+    if (!Array.isArray(target[key])) target[key] = Array(HISTORY_LEN).fill(null);
+    target[key].push(value == null || !Number.isFinite(value) ? null : value);
+    while (target[key].length > HISTORY_LEN) target[key].shift();
+  };
+  push('rtt', stats ? stats.rttMs : null);
+  push('bitrate', stats ? stats.bitrateKbps : null);
+  push('fps', stats ? stats.fps : null);
+  drawChart();
+}
+
+function recordMetrics() {
+  const stats = state.stats;
+  if (!stats) return;
+  state.samples.push({
+    at: Date.now(),
+    sessionCode: state.sessionCode,
+    rttMs: stats.rttMs,
+    fps: stats.fps,
+    bitrateKbps: stats.bitrateKbps,
+    lossPct: stats.lossPct,
+    jitterMs: stats.jitterMs,
+    width: stats.width,
+    height: stats.height,
+    quality: state.quality.key,
+    score: state.quality.score,
+    availabilityPct: uptimePct(),
+    connected: state.connected
+  });
+  if (state.samples.length > MAX_SAMPLES) state.samples.splice(0, state.samples.length - MAX_SAMPLES);
+}
+
+function niceCeil(value) {
+  if (!Number.isFinite(value) || value <= 0) return 1;
+  const power = Math.pow(10, Math.floor(Math.log10(value)));
+  const norm = value / power;
+  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+  return nice * power;
+}
+
+function drawChart() {
+  const canvas = ui.chart;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const width = Math.max(1, Math.round(rect.width * dpr));
+  const height = Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  if (width < 50 || height < 30) return;
+
+  const configs = {
+    rtt: { color: '#1F5F96', unit: 'ms', axis: v => NF0.format(v), value: v => v },
+    bitrate: { color: '#4F7D1E', unit: 'Mbps', axis: v => NF1.format(v / 1000), value: v => v / 1000 },
+    fps: { color: '#5B4B8A', unit: 'fps', axis: v => NF0.format(v), value: v => v }
+  };
+  const cfg = configs[state.chartMetric] || configs.rtt;
+  const values = Array.isArray(state.history[state.chartMetric]) ? state.history[state.chartMetric] : [];
+  const points = values.map((value, index) => ({ value, index })).filter(p => p.value != null && Number.isFinite(p.value));
+
+  const padLeft = 4 * dpr;
+  const padRight = 42 * dpr;
+  const padTop = 13 * dpr;
+  const padBottom = 12 * dpr;
+  const plotW = width - padLeft - padRight;
+  const plotH = height - padTop - padBottom;
+
+  ctx.font = `500 ${9 * dpr}px ${FONT_MONO}`;
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#8494A4';
+  ctx.textAlign = 'right';
+
+  if (!points.length) {
+    ctx.strokeStyle = '#EDF1F5';
+    ctx.lineWidth = dpr;
+    for (let i = 0; i <= 3; i += 1) {
+      const y = padTop + (plotH / 3) * i;
+      ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(padLeft + plotW, y); ctx.stroke();
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#8494A4';
+    ctx.font = `500 ${11 * dpr}px ${FONT_SANS}`;
+    ctx.fillText('Sin datos en el último minuto.', padLeft + plotW / 2, padTop + plotH / 2);
+    setText(ui.chartCurrent, 'Sin datos en el último minuto.');
+    return;
+  }
+
+  const max = niceCeil(Math.max(...points.map(p => p.value), 0));
+  const x = index => padLeft + (index / (HISTORY_LEN - 1)) * plotW;
+  const y = value => padTop + plotH - clamp(value / max, 0, 1) * plotH;
+
+  ctx.strokeStyle = '#EDF1F5';
+  ctx.lineWidth = dpr;
+  for (let i = 0; i <= 3; i += 1) {
+    const gy = padTop + (plotH / 3) * i;
+    ctx.beginPath(); ctx.moveTo(padLeft, gy); ctx.lineTo(padLeft + plotW, gy); ctx.stroke();
+  }
+  ctx.fillStyle = '#8494A4';
+  ctx.textAlign = 'right';
+  ctx.font = `500 ${9 * dpr}px ${FONT_MONO}`;
+  ctx.fillText(cfg.axis(max), width - 2 * dpr, padTop);
+  ctx.fillText('0', width - 2 * dpr, padTop + plotH);
+
+  const gradient = ctx.createLinearGradient(0, padTop, 0, padTop + plotH);
+  gradient.addColorStop(0, `${cfg.color}33`);
+  gradient.addColorStop(1, `${cfg.color}00`);
+
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const px = x(point.index);
+    const py = y(point.value);
+    if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.lineTo(x(points[points.length - 1].index), padTop + plotH);
+  ctx.lineTo(x(points[0].index), padTop + plotH);
+  ctx.closePath();
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    const px = x(point.index);
+    const py = y(point.value);
+    if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.strokeStyle = cfg.color;
+  ctx.lineWidth = 1.8 * dpr;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(x(last.index), y(last.value), 2.8 * dpr, 0, Math.PI * 2);
+  ctx.fillStyle = cfg.color;
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.2 * dpr;
+  ctx.stroke();
+
+  const average = points.reduce((sum, point) => sum + point.value, 0) / points.length;
+  const current = cfg.value(last.value);
+  const mean = cfg.value(average);
+  const metricLabel = state.chartMetric === 'rtt' ? 'RTT' : state.chartMetric === 'bitrate' ? 'Bitrate' : 'FPS';
+  setText(ui.chartCurrent, `${metricLabel} actual: ${NF1.format(current)} ${cfg.unit} · promedio ${NF1.format(mean)} ${cfg.unit}`);
+}
+
+async function tick() {
+  const now = Date.now();
+  setText(ui.stageClock, fmtClock(new Date(now)));
+  const sessionMs = state.sessionStart ? now - state.sessionStart : 0;
+  setText(ui.sessionDuration, fmtDuration(sessionMs));
+  setText(ui.connectedSince, state.connectedAt ? fmtClock(new Date(state.connectedAt)) : '—');
+  setText(ui.uptime, state.sessionStart ? `${NF1.format(uptimePct(now))} %` : '—');
+  setText(ui.reconnects, String(Math.max(0, state.attempts - 1)));
+
+  if (state.nextRetryAt) {
+    const left = Math.max(0, Math.ceil((state.nextRetryAt - now) / 1000));
+    if (ui.placeholder && !ui.placeholder.hidden && state.placeholderMode === 'offline') {
+      const prefix = state.lastErrorReason ? `${state.lastErrorReason.replace(/[.]+$/, '')}. ` : '';
+      setText(ui.placeholderText, `${prefix}Reintentando automáticamente en ${left} s. Verifique el emisor y el servidor MediaMTX.`);
+    }
+  }
+
+  refreshStatus();
+
+  if (state.connected && !state.hasVideo && state.connectedAt && now - state.connectedAt > 16000 && !state.stallReconnect) {
+    state.stallReconnect = true;
+    addEvent('El enlace está activo, pero no llegó video de la cámara.', 'warn');
+    scheduleRetry('No se recibió video de la cámara.');
+  }
+
+  if (state.connected && state.pc && !state.tickBusy) {
+    state.tickBusy = true;
+    try { await collectStats(); } finally { state.tickBusy = false; }
+  } else if (!state.connected) {
+    pushHistory();
+  }
+
+  drawHud();
+  if (!state.streamVisible) drawNoSignal();
+}
+
+/* ── Eventos, reportes y ajustes ────────────────────────────── */
+function addEvent(message, kind = 'info') {
+  state.events.unshift({ at: Date.now(), kind, message });
+  if (state.events.length > MAX_EVENTS) state.events.length = MAX_EVENTS;
+  renderEvents();
+}
+
+function renderEvents() {
+  const list = ui.eventLog;
+  if (!list) return;
+  list.textContent = '';
+  if (!state.events.length) {
+    const item = document.createElement('li');
+    item.className = 'event-empty';
+    item.textContent = 'Todavía no hay eventos registrados.';
+    list.appendChild(item);
+    return;
+  }
+  state.events.forEach((event) => {
+    const item = document.createElement('li');
+    if (event.kind) item.classList.add(`event--${event.kind}`);
+    const time = document.createElement('time');
+    time.dateTime = new Date(event.at).toISOString();
+    time.textContent = fmtClock(new Date(event.at));
+    const dot = document.createElement('span');
+    dot.className = 'event-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    const message = document.createElement('span');
+    message.className = 'event-msg';
+    message.textContent = event.message;
+    item.append(time, dot, message);
+    list.appendChild(item);
+  });
+}
+
+function aggregateSamples() {
+  const result = {};
+  ['rttMs', 'fps', 'bitrateKbps', 'lossPct', 'jitterMs'].forEach((key) => {
+    const values = state.samples
+      .map(sample => sample[key])
+      .filter(value => value != null && Number.isFinite(value))
+      .sort((a, b) => a - b);
+    if (!values.length) { result[key] = null; return; }
+    const sum = values.reduce((acc, value) => acc + value, 0);
+    result[key] = {
+      average: Number((sum / values.length).toFixed(3)),
+      min: Number(values[0].toFixed(3)),
+      max: Number(values[values.length - 1].toFixed(3)),
+      p95: Number(values[Math.min(values.length - 1, Math.floor(values.length * 0.95))].toFixed(3))
+    };
+  });
+  return result;
+}
+
+function buildReport() {
+  const now = Date.now();
+  const connectedMs = state.connectedAccumMs + (state.connectedAt ? now - state.connectedAt : 0);
+  return {
+    schema: 'ufro.teleodontologia.report/v1',
+    application: APP,
+    generatedAt: new Date(now).toISOString(),
+    session: {
+      code: state.sessionCode,
+      startedAt: state.sessionStart ? new Date(state.sessionStart).toISOString() : null,
+      durationSeconds: state.sessionStart ? Math.round((now - state.sessionStart) / 1000) : 0,
+      connectedSeconds: Math.round(connectedMs / 1000),
+      availabilityPct: Number(uptimePct(now).toFixed(2)),
+      professional: state.config.professional || null,
+      procedure: state.config.procedure || null,
+      room: state.config.room || null,
+      notes: state.config.notes || null
+    },
+    connection: {
+      server: state.config.server,
+      stream: state.config.stream,
+      attempts: state.attempts,
+      reconnections: Math.max(0, state.attempts - 1),
+      whepSetupMs: state.whepSetupMs,
+      pcState: state.pcState,
+      iceState: state.iceState,
+      iceRoute: state.iceRoute,
+      videoCodec: state.codec,
+      audioCodec: state.audioCodec
+    },
+    quality: state.quality,
+    latestMetrics: state.stats ? { ...state.stats } : null,
+    metricsSummary: aggregateSamples(),
+    sampleCount: state.samples.length,
+    events: state.events.slice().reverse().map(event => ({
+      at: new Date(event.at).toISOString(),
+      kind: event.kind,
+      message: event.message
+    })),
+    disclaimer: 'Métricas del enlace WebRTC. No corresponden a latencia vidrio a vidrio. No incluye video, audio ni imágenes.'
+  };
+}
+
+function escapeCsv(value) {
+  if (value == null) return '';
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function reportFilename(extension) {
+  const date = new Date();
+  const stamp = `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}-${pad2(date.getHours())}${pad2(date.getMinutes())}`;
+  const code = String(state.sessionCode || 'sesion').replace(/[^\w.-]+/g, '_');
+  return `${code}_${stamp}.${extension}`;
+}
+
+function downloadFile(filename, mime, content) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.rel = 'noopener';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function downloadJson() {
+  const report = buildReport();
+  downloadFile(reportFilename('json'), 'application/json;charset=utf-8', JSON.stringify(report, null, 2));
+  addEvent('Reporte JSON descargado.', 'success');
+  showToast('Reporte JSON descargado.', 'info');
+}
+
+function downloadCsv() {
+  const header = [
+    'record_type', 'iso_time', 'session_code', 'rtt_ms', 'fps', 'bitrate_kbps',
+    'loss_pct', 'jitter_ms', 'width', 'height', 'quality', 'score',
+    'event_kind', 'event_message'
+  ];
+  const rows = [header.join(',')];
+  state.samples.forEach((sample) => {
+    rows.push([
+      'metric', new Date(sample.at).toISOString(), state.sessionCode,
+      sample.rttMs != null ? sample.rttMs.toFixed(2) : '',
+      sample.fps != null ? sample.fps.toFixed(2) : '',
+      sample.bitrateKbps != null ? sample.bitrateKbps.toFixed(2) : '',
+      sample.lossPct != null ? sample.lossPct.toFixed(3) : '',
+      sample.jitterMs != null ? sample.jitterMs.toFixed(2) : '',
+      sample.width || '', sample.height || '', sample.quality || '', sample.score != null ? sample.score : '',
+      '', ''
+    ].map(escapeCsv).join(','));
+  });
+  state.events.slice().reverse().forEach((event) => {
+    rows.push([
+      'event', new Date(event.at).toISOString(), state.sessionCode,
+      '', '', '', '', '', '', '', '', '', event.kind || 'info', event.message
+    ].map(escapeCsv).join(','));
+  });
+  downloadFile(reportFilename('csv'), 'text/csv;charset=utf-8', `\uFEFF${rows.join('\r\n')}\r\n`);
+  addEvent('Reporte CSV descargado.', 'success');
+  showToast('Reporte CSV descargado.', 'info');
+}
+
+/* ── Ajustes, avisos y pantalla activa ──────────────────────── */
+function populateSettings() {
+  if (!ui.settingsForm) return;
+  ui.cfgServer.value = state.config.server;
+  ui.cfgStream.value = state.config.stream;
+  ui.cfgProfessional.value = state.config.professional || '';
+  ui.cfgProcedure.value = state.config.procedure || '';
+  ui.cfgRoom.value = state.config.room || '';
+  ui.cfgSessionCode.value = state.sessionCode;
+  ui.cfgNotes.value = state.config.notes || '';
+  ui.cfgViewMode.value = state.config.vrView;
+  ui.cfgKeepAwake.checked = Boolean(state.config.keepAwake);
+  const rotation = String(state.config.rotation);
+  if (![...ui.cfgRotation.options].some(option => option.value === rotation)) {
+    const option = document.createElement('option');
+    option.value = rotation;
+    option.textContent = `${rotation}° (personalizado)`;
+    ui.cfgRotation.appendChild(option);
+  }
+  ui.cfgRotation.value = rotation;
+}
+
+function updateSettingsWarnings() {
+  if (!ui.settingsForm) return;
+  const raw = String(ui.cfgServer.value || '').trim();
+  let valid = false;
+  try {
+    const parsed = new URL(raw);
+    valid = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch { valid = false; }
+
+  const httpsPage = location.protocol === 'https:';
+  const httpServer = /^http:\/\//i.test(raw);
+  if (ui.mixedNote) {
+    ui.mixedNote.hidden = !(httpsPage && httpServer);
+    ui.mixedNote.textContent = 'Página HTTPS con servidor WHEP HTTP: el navegador bloqueará el video por contenido mixto. Use HTTPS o un proxy inverso.';
+  }
+  if (ui.serverHelp) {
+    const invalid = Boolean(raw) && !valid;
+    ui.serverHelp.classList.toggle('is-error', invalid);
+    ui.serverHelp.textContent = !raw
+      ? 'Dirección base del servidor WebRTC. Puede incluir un proxy inverso.'
+      : invalid
+        ? 'URL no válida. Use el formato http://servidor:8889 o https://servidor/ruta.'
+        : 'Dirección base del servidor WebRTC. Puede incluir un proxy inverso.';
+  }
+
+  if (ui.xrStatus) {
+    if (state.inVR) ui.xrStatus.textContent = 'Modo inmersivo activo en este visor.';
+    else if (!window.isSecureContext) ui.xrStatus.textContent = 'No disponible por HTTP: WebXR requiere que la página se sirva por HTTPS.';
+    else if (!state.xrChecked) ui.xrStatus.textContent = 'Verificando compatibilidad con WebXR…';
+    else if (state.xrSupported) ui.xrStatus.textContent = 'Compatible: este visor puede entrar en modo inmersivo.';
+    else ui.xrStatus.textContent = 'Este navegador no anuncia soporte WebXR. Use el navegador de Meta Quest 2 con HTTPS.';
+  }
+  updateWakeStatus();
+}
+
+function updateWakeStatus() {
+  if (!ui.wakeStatus) return;
+  if (!state.config.keepAwake) ui.wakeStatus.textContent = 'Pantalla activa: desactivada en ajustes.';
+  else if (state.wakeLock) ui.wakeStatus.textContent = 'Pantalla activa: bloqueo de suspensión adquirido.';
+  else if (!('wakeLock' in navigator)) ui.wakeStatus.textContent = 'Pantalla activa: no compatible con este navegador.';
+  else if (!window.isSecureContext) ui.wakeStatus.textContent = 'Pantalla activa: requiere HTTPS.';
+  else ui.wakeStatus.textContent = 'Pantalla activa: se activará al interactuar con la página.';
+}
+
+async function requestWakeLock() {
+  if (!state.config.keepAwake) { updateWakeStatus(); return; }
+  if (!('wakeLock' in navigator) || !window.isSecureContext || state.wakeLock) { updateWakeStatus(); return; }
+  try {
+    const lock = await navigator.wakeLock.request('screen');
+    state.wakeLock = lock;
+    lock.addEventListener('release', () => {
+      if (state.wakeLock === lock) state.wakeLock = null;
+      updateWakeStatus();
+    });
+    updateWakeStatus();
+  } catch {
+    state.wakeLock = null;
+    updateWakeStatus();
+  }
+}
+
+async function releaseWakeLock() {
+  const lock = state.wakeLock;
+  state.wakeLock = null;
+  if (lock) { try { await lock.release(); } catch { /* ya liberado */ } }
+  updateWakeStatus();
+}
+
+function openSettings() {
+  populateSettings();
+  updateSettingsWarnings();
+  if (typeof ui.settingsDialog.showModal === 'function') {
+    if (!ui.settingsDialog.open) ui.settingsDialog.showModal();
+  } else {
+    ui.settingsDialog.setAttribute('open', '');
+  }
+  setTimeout(() => { try { ui.cfgServer.focus(); ui.cfgServer.select(); } catch { /* opcional */ } }, 50);
+}
+
+function closeSettings() {
+  try {
+    if (typeof ui.settingsDialog.close === 'function' && ui.settingsDialog.open) ui.settingsDialog.close();
+    else ui.settingsDialog.removeAttribute('open');
+  } catch { ui.settingsDialog.removeAttribute('open'); }
+}
+
+function saveSettings(ev) {
+  ev.preventDefault();
+  const server = String(ui.cfgServer.value || '').trim().replace(/\/+$/, '');
+  let parsed;
+  try { parsed = new URL(server); } catch { parsed = null; }
+  if (!parsed || !['http:', 'https:'].includes(parsed.protocol)) {
+    updateSettingsWarnings();
+    showToast('Ingrese una URL válida para el servidor MediaMTX.', 'error');
+    ui.cfgServer.focus();
+    return;
+  }
+  const stream = String(ui.cfgStream.value || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!stream || !/^[A-Za-z0-9._/-]{1,120}$/.test(stream)) {
+    showToast('El nombre del stream no es válido. Use letras, números, punto, guion o barra.', 'error');
+    ui.cfgStream.focus();
+    return;
+  }
+
+  state.config = {
+    ...state.config,
+    server,
+    stream,
+    professional: String(ui.cfgProfessional.value || '').trim().slice(0, 80),
+    procedure: String(ui.cfgProcedure.value || '').trim().slice(0, 120),
+    room: String(ui.cfgRoom.value || '').trim().slice(0, 60),
+    notes: String(ui.cfgNotes.value || '').trim().slice(0, 500),
+    vrView: ui.cfgViewMode.value === 'flat' ? 'flat' : 'sphere',
+    rotation: Number(ui.cfgRotation.value) || 0,
+    keepAwake: ui.cfgKeepAwake.checked
+  };
+  saveConfig();
+  state.alertDismissed = false;
+  applyConfigLabels();
+  updateAlerts();
+  closeSettings();
+  addEvent(`Configuración actualizada · ${serverDisplay(state.config.server)} · stream «${state.config.stream}».`, 'info');
+  if (state.config.keepAwake) requestWakeLock(); else releaseWakeLock();
+  showToast('Configuración guardada. Reconectando…', 'info');
+  reconnectNow('Aplicando nueva configuración.');
+}
+
+function resetSettingsForm() {
+  state.config = {
+    ...state.config,
+    server: DEFAULTS.server,
+    stream: DEFAULTS.stream,
+    vrView: DEFAULTS.vrView,
+    rotation: DEFAULTS.rotation
+  };
+  populateSettings();
+  updateSettingsWarnings();
+  showToast('Conexión restablecida en el formulario. Guarde para aplicar.', 'info');
+}
+
+function showToast(message, kind = 'info', duration = 3800) {
+  if (!ui.toast) return;
+  clearTimeout(state.toastTimer);
+  ui.toast.textContent = message;
+  ui.toast.className = `toast show${kind === 'error' ? ' error' : kind === 'warn' ? ' warn' : ''}`;
+  state.toastTimer = setTimeout(() => { ui.toast.className = 'toast'; }, duration);
+}
+
+function toggleAudio() {
+  if (!state.hasAudio || !ui.remoteVideo) return;
+  state.audioEnabled = !state.audioEnabled;
+  ui.remoteVideo.muted = !state.audioEnabled;
+  if (state.audioEnabled) {
+    const played = ui.remoteVideo.play();
+    if (played && typeof played.catch === 'function') played.catch(() => {});
+  }
+  updateAudioButton();
+  renderMetrics(state.stats);
+  addEvent(state.audioEnabled ? 'Audio activado.' : 'Audio silenciado.', 'info');
+  showToast(state.audioEnabled ? 'Audio activado.' : 'Audio silenciado.', 'info', 2200);
+}
+
+async function toggleFullscreen() {
+  const target = ui.stage;
+  if (!target) return;
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else if (typeof target.requestFullscreen === 'function') {
+      await target.requestFullscreen({ navigationUI: 'hide' });
+    } else {
+      showToast('Este navegador no permite pantalla completa.', 'warn');
+    }
+  } catch {
+    showToast('No se pudo cambiar a pantalla completa.', 'warn');
+  }
+}
+
+function bindEvents() {
+  if (ui.vrBtn) ui.vrBtn.addEventListener('click', () => { if (state.inVR) exitVR(); else enterVR(); });
+  if (ui.fullscreenBtn) ui.fullscreenBtn.addEventListener('click', toggleFullscreen);
+  if (ui.fullscreenBtn2) ui.fullscreenBtn2.addEventListener('click', toggleFullscreen);
+  [ui.settingsBtn, ui.editSessionBtn, ui.alertSettingsBtn, ui.placeholderSettings].forEach(button => {
+    if (button) button.addEventListener('click', openSettings);
+  });
+  if (ui.closeSettings) ui.closeSettings.addEventListener('click', closeSettings);
+  if (ui.cancelSettings) ui.cancelSettings.addEventListener('click', closeSettings);
+  if (ui.settingsDialog) {
+    ui.settingsDialog.addEventListener('click', (ev) => { if (ev.target === ui.settingsDialog) closeSettings(); });
+  }
+  if (ui.settingsForm) ui.settingsForm.addEventListener('submit', saveSettings);
+  if (ui.resetConfig) ui.resetConfig.addEventListener('click', resetSettingsForm);
+  if (ui.cfgServer) {
+    ui.cfgServer.addEventListener('input', updateSettingsWarnings);
+    ui.cfgServer.addEventListener('change', updateSettingsWarnings);
+  }
+  if (ui.alertCloseBtn) {
+    ui.alertCloseBtn.addEventListener('click', () => { state.alertDismissed = true; ui.alertBanner.hidden = true; });
+  }
+  if (ui.viewBtn) ui.viewBtn.addEventListener('click', togglePreview360);
+  if (ui.audioBtn) ui.audioBtn.addEventListener('click', toggleAudio);
+  if (ui.reconnectBtn) ui.reconnectBtn.addEventListener('click', () => reconnectNow());
+  if (ui.placeholderRetry) ui.placeholderRetry.addEventListener('click', () => reconnectNow());
+  if (ui.clearLogBtn) ui.clearLogBtn.addEventListener('click', () => { state.events = []; renderEvents(); showToast('Registro de eventos limpiado.', 'info', 2200); });
+  if (ui.downloadJson) ui.downloadJson.addEventListener('click', downloadJson);
+  if (ui.downloadCsv) ui.downloadCsv.addEventListener('click', downloadCsv);
+
+  document.querySelectorAll('[data-chart-metric]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const metric = button.dataset.chartMetric;
+      if (!['rtt', 'bitrate', 'fps'].includes(metric)) return;
+      state.chartMetric = metric;
+      document.querySelectorAll('[data-chart-metric]').forEach((other) => {
+        const active = other === button;
+        other.classList.toggle('is-active', active);
+        other.setAttribute('aria-pressed', String(active));
+      });
+      drawChart();
+    });
+  });
+
+  window.addEventListener('offline', () => {
+    addEvent('El navegador informó que no hay conexión de red.', 'warn');
+    showToast('Sin conexión de red. Se reintentará al recuperarla.', 'warn');
+    refreshStatus();
+  });
+  window.addEventListener('online', () => {
+    addEvent('Red restablecida.', 'success');
+    if (!state.connected && !state.connecting) reconnectNow('Red restablecida: reconectando.');
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      requestWakeLock();
+      drawChart();
+      if (!state.connected && !state.connecting && !state.retryTimer) connect();
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    setTimeout(() => { drawChart(); updateFlatScreenSize(); }, 160);
+  });
+  window.addEventListener('pagehide', () => {
+    cleanupPeer(true);
+    releaseWakeLock();
+  });
+  window.addEventListener('pageshow', (ev) => {
+    if (ev.persisted && !state.connected && !state.connecting) reconnectNow('Página restaurada: reconectando.');
+  });
+}
+
+/* ── Arranque ───────────────────────────────────────────────── */
+init();
+})();
 </script>
 </body>
 </html>
