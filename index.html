@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebRTC Local · Receptor</title>
+<style>
+  :root{
+    --bg: #0d1117;
+    --panel: #151b23;
+    --line: #262e38;
+    --text: #e6edf3;
+    --dim: #7d8590;
+    --accent: #3fb950;
+    --accent-dim: #1f6b34;
+    --warn: #d29922;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 32px 20px 60px;
+  }
+  header{
+    width:100%;
+    max-width: 720px;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    margin-bottom: 22px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 16px;
+  }
+  h1{ font-size: 19px; font-weight: 600; margin:0; letter-spacing: -0.01em; }
+  h1 span{ color: var(--dim); font-weight: 400; }
+  .status{
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--dim);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .dot{ width:7px; height:7px; border-radius:50%; background: var(--dim); transition: background .2s; }
+  .dot.live{ background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .dot.warn{ background: var(--warn); }
+
+  main{ width:100%; max-width: 720px; }
+
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-head{
+    display:flex; justify-content:space-between; align-items:center;
+    padding: 10px 14px; border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--dim); font-family: var(--mono);
+  }
+  video{
+    width:100%; display:block; background:#000;
+    aspect-ratio: 16/9; object-fit: contain;
+  }
+  .placeholder{
+    position: relative;
+  }
+  .placeholder::after{
+    content: attr(data-msg);
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    color: var(--dim); font-size: 13px; font-family: var(--mono);
+    pointer-events:none;
+  }
+  .placeholder.hidden::after{ content:''; }
+
+  .note{
+    max-width: 720px; width:100%; margin-top: 18px;
+    font-size: 12.5px; color: var(--dim); line-height: 1.6;
+  }
+  .note code{
+    background: var(--panel); border: 1px solid var(--line);
+    padding: 1px 5px; border-radius: 4px; font-family: var(--mono); color: var(--text);
+  }
+</style>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+</head>
+<body>
+
+<header>
+  <h1>WebRTC Local <span>· receptor</span></h1>
+  <div class="status">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Buscando emisor…</span>
+  </div>
+</header>
+
+<main>
+  <div class="panel placeholder" id="placeholder" data-msg="Sin señal — abrí emisor.html y dale Iniciar emisión">
+    <div class="panel-head">
+      <span>Recibido por WebRTC</span>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:11px; margin:0;">
+          <input type="checkbox" id="vrMode"> Modo 360° (VR)
+        </label>
+        <span id="rcvInfo">—</span>
+      </div>
+    </div>
+    
+    <div id="videoContainer2D">
+      <video id="remoteVideo" autoplay playsinline ></video>
+    </div>
+
+    <div id="videoContainerVR" style="display:none; width: 100%; aspect-ratio: 16/9; position: relative; background:#000;">
+      <a-scene embedded style="width: 100%; height: 100%;" vr-mode-ui="enabled: true">
+        <a-videosphere src="#remoteVideo" rotation="0 -90 0"></a-videosphere>
+        <a-entity camera look-controls position="0 0 0"></a-entity>
+      </a-scene>
+    </div>
+  </div>
+</main>
+
+
+
+<p class="note">
+  Esta página pide el video al servidor MediaMTX usando el estándar WHEP. 
+  Asegúrate de cambiar la IP <code>192.168.1.100</code> en el código por la IP real del servidor Docker.
+</p>
+
+<script>
+const MEDIAMTX_URL = "http://34.0.54.215:8889"; // CAMBIA ESTO A LA IP DE TU SERVIDOR DOCKER
+const STREAM_NAME = "theta";
+
+const remoteVideo = document.getElementById('remoteVideo');
+
+const vrMode = document.getElementById('vrMode');
+const container2D = document.getElementById('videoContainer2D');
+const containerVR = document.getElementById('videoContainerVR');
+
+vrMode.addEventListener('change', (e) => {
+  if (e.target.checked) {
+    container2D.style.position = 'absolute';
+    container2D.style.opacity = '0';
+    container2D.style.pointerEvents = 'none';
+    containerVR.style.display = 'block';
+  } else {
+    container2D.style.position = 'relative';
+    container2D.style.opacity = '1';
+    container2D.style.pointerEvents = 'auto';
+    containerVR.style.display = 'none';
+  }
+});
+
+const placeholder = document.getElementById('placeholder');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const rcvInfo = document.getElementById('rcvInfo');
+
+let pc = null;
+let retryTimer = null;
+
+function setStatus(state, label) {
+  statusDot.className = 'dot' + (state === 'live' ? ' live' : state === 'warn' ? ' warn' : '');
+  statusText.textContent = label;
+}
+
+async function connectToMediaMTX() {
+  if (pc) pc.close();
+  pc = new RTCPeerConnection();
+  
+  // En WHEP, el receptor crea la oferta para recibir (recvonly)
+  pc.addTransceiver('video', { direction: 'recvonly' });
+
+  pc.ontrack = e => {
+    console.log('[receptor] track recibido', e.track.kind);
+    remoteVideo.srcObject = e.streams[0];
+    placeholder.classList.add('hidden');
+    rcvInfo.textContent = 'Conectado a MediaMTX';
+  };
+
+  pc.onconnectionstatechange = () => {
+    console.log('[receptor] connectionState:', pc.connectionState);
+    if (pc.connectionState === 'connected') {
+      setStatus('live', 'Recibiendo');
+      clearTimeout(retryTimer);
+    } else if (['disconnected','failed','closed'].includes(pc.connectionState)) {
+      setStatus('warn', 'Desconectado, reintentando…');
+      rcvInfo.textContent = '—';
+      placeholder.classList.remove('hidden');
+      scheduleRetry();
+    }
+  };
+
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // Esperar a los candidatos ICE
+    await new Promise((resolve) => {
+      if (pc.iceGatheringState === 'complete') {
+        resolve();
+      } else {
+        const checkState = () => {
+          if (pc.iceGatheringState === 'complete') {
+            pc.removeEventListener('icegatheringstatechange', checkState);
+            resolve();
+          }
+        };
+        pc.addEventListener('icegatheringstatechange', checkState);
+        setTimeout(() => {
+          pc.removeEventListener('icegatheringstatechange', checkState);
+          resolve();
+        }, 2000);
+      }
+    });
+
+    console.log('[receptor] solicitando stream a MediaMTX...');
+    const res = await fetch(`${MEDIAMTX_URL}/${STREAM_NAME}/whep`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/sdp' },
+      body: pc.localDescription.sdp
+    });
+
+    if (!res.ok) throw new Error(`Servidor respondió: ${res.status}`);
+    
+    const answerSDP = await res.text();
+    await pc.setRemoteDescription({ type: 'answer', sdp: answerSDP });
+    
+  } catch (err) {
+    console.warn('[receptor] Fallo al conectar, reintentando en 2s...', err);
+    scheduleRetry();
+  }
+}
+
+function scheduleRetry() {
+  clearTimeout(retryTimer);
+  retryTimer = setTimeout(connectToMediaMTX, 2000);
+}
+
+// Iniciar proceso
+setStatus('warn', 'Conectando a MediaMTX…');
+connectToMediaMTX();
+</script>
+</body>
+</html>
