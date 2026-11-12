@@ -15,6 +15,12 @@ webrtcAdditionalHosts: [34.0.54.215]
 webrtcIPsFromInterfaces: no
 
 paths:
-  all:
+  # Transmisión principal: cámara 360° Ricoh Theta X.
+  theta:
+    publishUser: ""
+    readUser: ""
+  # Transmisión secundaria: cámara intraoral MouthWatch.
+  # MediaMTX mantiene ambas publicaciones y lecturas en paralelo.
+  mouthwatch:
     publishUser: ""
     readUser: ""

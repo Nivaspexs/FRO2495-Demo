@@ -4,6 +4,8 @@ services:
   mediamtx:
     image: bluenviron/mediamtx:latest
     container_name: mediamtx_server
+    # Sirve en paralelo los streams theta y mouthwatch definidos en mediamtx.yml.
+    # Ambos comparten los mismos puertos de señalización y media WebRTC.
     
     # ---------------------------------------------------------
     # CONFIGURACIÓN DE RED (NAT)

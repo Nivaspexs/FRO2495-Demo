@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#003A70">
-<meta name="description" content="Recepción de teleodontología UFRO: sesión clínica remota con cámara 360°, WebRTC y métricas de enlace para Meta Quest 2.">
+<meta name="description" content="Recepción de teleodontología UFRO: sesión clínica remota con cámara 360°, cámara intraoral MouthWatch, WebRTC y métricas de enlace para Meta Quest 2.">
 <title>Teleodontología UFRO · Recepción de sesión en vivo</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23003A70'/%3E%3Cpath d='M24 18c-6 0-10 4.4-10 10 0 4.6 2 8.4 3.2 12.8 1 3.4 1.4 7.2 4.2 7.2 2.2 0 2.4-3.2 3.2-6 .8-2.8 2-4.4 5.4-4.4s4.6 1.6 5.4 4.4c.8 2.8 1 6 3.2 6 2.8 0 3.2-3.8 4.2-7.2C44 36.4 46 32.6 46 28c0-5.6-4-10-10-10-3 0-4.6 1.4-6 1.4S27 18 24 18Z' fill='%23fff'/%3E%3C/svg%3E">
 <style>
@@ -113,6 +113,41 @@ svg{display:block}
 .stage-brand{position:absolute;left:14px;top:12px;z-index:3;color:rgba(255,255,255,.62);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none}
 .stage-clock{position:absolute;right:14px;top:12px;z-index:3;display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;background:rgba(3,14,26,.55);color:#EAF2F8;font-family:var(--mono);font-size:10.5px;pointer-events:none;backdrop-filter:blur(6px)}
 .stage-clock svg{width:12px;height:12px;opacity:.7}
+.mouthwatch-pip{position:absolute;right:14px;top:48px;z-index:3;width:min(34%,330px);aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(255,255,255,.24);border-radius:7px;background:#06121E;box-shadow:0 14px 38px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease}
+.mouthwatch-pip[data-visible="true"]{opacity:1}
+.mouthwatch-pip video{display:block;width:100%;height:100%;object-fit:contain;background:#06121E}
+.mouthwatch-pip-bar{position:absolute;top:0;right:0;left:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 7px;background:linear-gradient(to bottom,rgba(3,12,22,.82),rgba(3,12,22,0));pointer-events:none}
+.mouthwatch-pip-title{color:#EAF2F8;font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.mouthwatch-pip-state{font-family:var(--mono);font-size:8.5px;color:#AFC6DB;text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.mouthwatch-pip[data-state="live"] .mouthwatch-pip-state{color:#8CC63F}
+.mouthwatch-pip[data-state="connecting"] .mouthwatch-pip-state{color:#E0A526}
+.mouthwatch-pip[data-state="offline"] .mouthwatch-pip-state{color:#E06666}
+.mouthwatch-empty{position:absolute;inset:0;z-index:0;display:grid;place-items:center;padding:12px;background:radial-gradient(circle at 50% 45%,#0B2034 0%,#06121E 70%);color:#AFC6DB;font-size:11.5px;font-weight:600;line-height:1.4;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,.6);pointer-events:none}
+.mouthwatch-empty[hidden]{display:none}
+.feed-label{position:absolute;left:14px;top:12px;z-index:3;padding:5px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;background:rgba(3,14,26,.55);color:#EAF2F8;font-size:9.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none;backdrop-filter:blur(6px)}
+.feed-label[hidden]{display:none}
+.stage-btn.is-active{background:rgba(140,198,63,.2);border-color:rgba(140,198,63,.68);color:#F4FFE9}
+.stage.feed-mouthwatch > #remoteVideo{opacity:0!important}
+.stage.feed-mouthwatch > #placeholder{display:none!important}
+.stage.feed-mouthwatch .stage-brand,.stage.feed-mouthwatch .stage-clock,
+.stage.mode-parallel .stage-brand,.stage.mode-parallel .stage-clock{display:none!important}
+.stage.feed-mouthwatch .mouthwatch-pip,
+.stage.mode-parallel .mouthwatch-pip{opacity:1!important;pointer-events:none;background:#06121E}
+.stage.feed-mouthwatch .mouthwatch-pip{inset:0;width:auto;height:auto;aspect-ratio:auto;border:0;border-radius:0;box-shadow:none;z-index:2}
+.stage.feed-mouthwatch .mouthwatch-pip-bar{padding:10px 12px;background:linear-gradient(to bottom,rgba(3,12,22,.72),rgba(3,12,22,0))}
+.stage.feed-mouthwatch .mouthwatch-pip-title{font-size:11px}
+.stage.feed-mouthwatch .mouthwatch-pip-state{font-size:10px}
+.stage.mode-parallel .mouthwatch-pip-bar{padding:8px 10px}
+.stage.mode-parallel .mouthwatch-pip-title{font-size:10.5px}
+.stage.mode-parallel .mouthwatch-pip-state{font-size:9.5px}
+.stage.feed-mouthwatch .mouthwatch-empty{font-size:14px}
+.stage.mode-parallel .mouthwatch-empty{font-size:12.5px}
+.stage.mode-parallel > #remoteVideo{inset:0 auto 0 0;width:50%;height:100%}
+.stage.mode-parallel > #placeholder{right:50%;padding:18px}
+.stage.mode-parallel > #placeholder h3{font-size:18px}
+.stage.mode-parallel .stage-overlay{z-index:6}
+.stage.mode-parallel .mouthwatch-pip{top:0;right:0;bottom:0;left:auto;width:50%;height:auto;aspect-ratio:auto;border:0;border-left:1px solid rgba(255,255,255,.16);border-radius:0;box-shadow:none;z-index:2}
+.stage.mode-parallel::after{content:"";position:absolute;top:0;bottom:0;left:50%;z-index:3;width:1px;background:rgba(255,255,255,.18);pointer-events:none}
 .stage-overlay{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;pointer-events:none}
 .stage-overlay::before{content:"";position:absolute;right:0;bottom:0;left:0;height:140px;background:linear-gradient(to top,rgba(3,12,22,.82),rgba(3,12,22,0));pointer-events:none}
 .stage-controls{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -262,7 +297,9 @@ input[readonly]{background:#F4F7FA;color:var(--muted)}
 .stage:fullscreen{width:100vw;height:100vh;aspect-ratio:auto;border-radius:0;background:#000}
 .stage:fullscreen .stage-overlay{padding:24px}
 .stage:fullscreen .stage-brand,.stage:fullscreen .stage-clock{font-size:12px}
-body.vr-active .stage video,body.vr-active .stage-overlay,body.vr-active .stage-placeholder,body.vr-active .stage-brand,body.vr-active .stage-clock{display:none!important}
+body.vr-active .stage > video,body.vr-active .stage-overlay,body.vr-active .stage-placeholder,body.vr-active .stage-brand,body.vr-active .stage-clock,body.vr-active .feed-label{display:none!important}
+body.vr-active .stage .mouthwatch-pip{opacity:0!important;pointer-events:none!important}
+body.vr-active .stage.mode-parallel::after{display:none!important}
 
 @media (max-width:1180px){
   .main-grid{grid-template-columns:1fr}
@@ -299,6 +336,7 @@ body.vr-active .stage video,body.vr-active .stage-overlay,body.vr-active .stage-
   .stage-controls{justify-content:flex-end}
   .control-group{flex:1}
   .stage-btn-icon{order:2}
+  .mouthwatch-pip{right:10px;top:44px;width:48%}
   .session-facts{gap:14px}
   .footer-inner{align-items:flex-start;flex-direction:column;gap:8px}
 }
@@ -341,7 +379,7 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
       <div class="brand-copy">
         <p class="eyebrow">Universidad de La Frontera</p>
         <h1>Teleodontología <span>Sesión clínica remota</span></h1>
-        <p class="brand-sub">Recepción inmersiva de cámara 360° · Enlace WebRTC</p>
+        <p class="brand-sub">Recepción inmersiva de cámara 360° + MouthWatch · Enlace WebRTC</p>
       </div>
     </div>
     <div class="masthead-actions">
@@ -410,6 +448,20 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
               <a-entity id="vrNoSignalRoot" position="0 0.20 -1.8" visible="false">
                 <a-plane id="vrNoSignalVisual" width="0.98" height="0.283" material="shader: flat; transparent: true; opacity: 1; side: double"></a-plane>
               </a-entity>
+              <a-entity id="mouthwatchGroup" position="0.62 0.18 -1.55" visible="false">
+                <a-plane id="mouthwatchFrame" width="0.86" height="0.52" position="0 0 -0.004" material="shader: flat; color: #071829"></a-plane>
+                <a-plane id="mouthwatchScreen" width="0.82" height="0.46" src="#mouthwatchVideo" material="shader: flat; side: double"></a-plane>
+              </a-entity>
+              <a-entity id="mouthwatchSoloGroup" position="0 0.24 -1.65" visible="false">
+                <a-plane id="mouthwatchSoloFrame" width="1.12" height="0.65" position="0 0 -0.004" material="shader: flat; color: #071829"></a-plane>
+                <a-plane id="mouthwatchSoloScreen" width="1.07" height="0.60" src="#mouthwatchVideo" material="shader: flat; side: double"></a-plane>
+              </a-entity>
+              <a-entity id="parallelGroup" position="0 0.22 -1.65" visible="false">
+                <a-plane id="parallelThetaFrame" width="0.92" height="0.54" position="-0.5 0 -0.004" material="shader: flat; color: #071829"></a-plane>
+                <a-plane id="parallelThetaScreen" width="0.88" height="0.50" position="-0.5 0 0" src="#remoteVideo" material="shader: flat; side: double"></a-plane>
+                <a-plane id="parallelMouthwatchFrame" width="0.92" height="0.54" position="0.5 0 -0.004" material="shader: flat; color: #071829"></a-plane>
+                <a-plane id="parallelMouthwatchScreen" width="0.88" height="0.50" position="0.5 0 0" src="#mouthwatchVideo" material="shader: flat; side: double"></a-plane>
+              </a-entity>
             </a-entity>
           </a-entity>
           <a-entity id="leftController" laser-controls="hand: left; model: false"></a-entity>
@@ -417,7 +469,16 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
         </a-scene>
 
         <video id="remoteVideo" autoplay muted playsinline preload="auto"></video>
+        <div class="mouthwatch-pip" id="mouthwatchPip" data-visible="false" data-state="offline" aria-label="Transmisión secundaria MouthWatch" aria-hidden="true">
+          <video id="mouthwatchVideo" autoplay muted playsinline preload="auto"></video>
+          <div class="mouthwatch-pip-bar">
+            <span class="mouthwatch-pip-title">MouthWatch</span>
+            <span class="mouthwatch-pip-state" id="mouthwatchState">Sin señal</span>
+          </div>
+          <div class="mouthwatch-empty" id="mouthwatchEmpty">Sin señal de MouthWatch</div>
+        </div>
         <div class="stage-brand">UFRO · Teleodontología</div>
+        <div class="feed-label" id="parallelThetaLabel" hidden>Theta 360°</div>
         <div class="stage-clock" title="Hora local">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
           <span id="stageClock">--:--:--</span>
@@ -429,6 +490,18 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
               <button class="stage-btn" id="viewBtn" type="button" aria-label="Cambiar a vista 360 grados">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.4 2.5 3.6 5.6 3.6 9s-1.2 6.5-3.6 9c-2.4-2.5-3.6-5.6-3.6-9S9.6 5.5 12 3Z"/></svg>
                 <span id="viewBtnLabel">Vista 360°</span>
+              </button>
+              <button class="stage-btn" id="feedBtn" type="button" aria-pressed="false" title="Mostrar solo la cámara MouthWatch">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14M15 5l3 3-3 3"/><path d="M20 16H6M9 13l-3 3 3 3"/></svg>
+                <span id="feedBtnLabel">Solo MouthWatch</span>
+              </button>
+              <button class="stage-btn" id="mouthwatchBtn" type="button" aria-pressed="false" title="Mostrar u ocultar la transmisión MouthWatch">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="11" width="7" height="6" rx="1"/></svg>
+                <span id="mouthwatchBtnLabel">MouthWatch</span>
+              </button>
+              <button class="stage-btn" id="parallelBtn" type="button" aria-pressed="false" title="Mostrar Theta y MouthWatch en paralelo plano">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/></svg>
+                <span id="parallelBtnLabel">Paralelo</span>
               </button>
               <button class="stage-btn" id="hudToggleBtn" type="button" aria-pressed="false" aria-controls="vrHudRoot" title="Mostrar u ocultar el panel flotante de la vista 360°" hidden>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -603,7 +676,7 @@ if(!window.AFRAME){document.write('<script src="https://aframe.io/releases/1.6.0
       <button class="btn-icon dialog-close" id="closeSettings" type="button" aria-label="Cerrar ajustes">×</button>
     </div>
     <div class="dialog-body">
-      <p class="field-help" style="margin:0 0 16px">La recepción WHEP se realiza automáticamente desde este mismo servidor (nginx), usando el stream configurado (<code>theta</code> por defecto).</p>
+      <p class="field-help" style="margin:0 0 16px">La recepción WHEP se realiza automáticamente desde este mismo servidor (nginx). La vista principal usa <code>theta</code> y la transmisión secundaria <code>mouthwatch</code> (por defecto); ambas se mantienen conectadas en paralelo.</p>
       <fieldset class="fieldset">
         <legend>Contexto clínico</legend>
         <div class="form-grid">
@@ -653,7 +726,7 @@ const $ = (id) => document.getElementById(id);
 const APP = { name: 'Teleodontología UFRO · Recepción WHEP', version: '2.0.0' };
 const STORAGE_KEY = 'ufro.teleodontologia.receptor.v2';
 const DEFAULTS = {
-  server: '', stream: 'theta', vrView: 'sphere', rotation: -90,
+  server: '', stream: 'theta', auxStream: 'mouthwatch', vrView: 'sphere', rotation: -90,
   keepAwake: true, preview360: false, professional: '', procedure: '', room: '', notes: ''
 };
 const HISTORY_LEN = 60;
@@ -661,9 +734,12 @@ const MAX_SAMPLES = 14400;
 const MAX_EVENTS = 250;
 const HUD_W = 1400, HUD_H = 500, HUD_PLANE_W = 1.15, HUD_PLANE_H = 0.4107;
 const HUD_BUTTONS = [
-  { action: 'recenter', x: 48, y: 270, w: 320, h: 80 },
-  { action: 'view', x: 392, y: 270, w: 320, h: 80 },
-  { action: 'exit', x: 736, y: 270, w: 320, h: 80 }
+  { action: 'recenter', x: 62, y: 270, w: 200, h: 80 },
+  { action: 'view', x: 277, y: 270, w: 200, h: 80 },
+  { action: 'mouthwatch', x: 492, y: 270, w: 200, h: 80 },
+  { action: 'feed', x: 707, y: 270, w: 200, h: 80 },
+  { action: 'parallel', x: 922, y: 270, w: 200, h: 80 },
+  { action: 'exit', x: 1137, y: 270, w: 200, h: 80 }
 ];
 const FONT_SANS = 'system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
 const FONT_MONO = 'ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace';
@@ -690,6 +766,12 @@ const state = {
   packetsLost: 0, packetsReceived: 0, pcState: '—', iceState: '—',
   stallCount: 0, stalled: false, stallReconnect: false, wakeLock: null,
   connectTimeout: null, autoplayWarned: false,
+  mouthwatchVisible: false, feed: 'theta', parallel: false,
+  aux: {
+    pc: null, resource: null, abortController: null, retryTimer: null,
+    connectTimeout: null, disconnectTimer: null, nextRetryAt: null, retryAttempt: 0, attempts: 0,
+    connecting: false, connected: false, generation: 0, autoplayWarned: false
+  },
   hudHover: null, hudHitsReady: false, hudTexture: null, noSignalTexture: null,
   hudCtx: null, noSignalCtx: null, placeholderMode: 'none', toastTimer: null,
   alertDismissed: false, scenePaused: false, hudHidden: false
@@ -761,15 +843,17 @@ function loadConfig() {
   // La recepción siempre es del mismo origen: nginx publica /<stream>/whep.
   cfg.server = '';
   const params = new URLSearchParams(location.search);
-  ['stream', 'professional', 'procedure', 'room', 'notes'].forEach(key => {
+  ['stream', 'auxStream', 'professional', 'procedure', 'room', 'notes'].forEach(key => {
     if (params.has(key)) cfg[key] = params.get(key);
   });
+  if (params.has('aux')) cfg.auxStream = params.get('aux');
   if (params.has('view')) cfg.vrView = params.get('view');
   if (params.has('rotation')) cfg.rotation = Number(params.get('rotation'));
   if (params.has('preview360')) cfg.preview360 = params.get('preview360') === '1';
   if (params.has('awake')) cfg.keepAwake = params.get('awake') !== '0';
   cfg.server = String(cfg.server || DEFAULTS.server).trim().replace(/\/+$/, '');
   cfg.stream = String(cfg.stream || DEFAULTS.stream).trim().replace(/^\/+|\/+$/g, '');
+  cfg.auxStream = String(cfg.auxStream || DEFAULTS.auxStream).trim().replace(/^\/+|\/+$/g, '');
   cfg.professional = String(cfg.professional || '').slice(0, 80);
   cfg.procedure = String(cfg.procedure || '').slice(0, 120);
   cfg.room = String(cfg.room || '').slice(0, 60);
@@ -807,6 +891,8 @@ function cacheUI() {
   [
     'todayLabel','connectionPill','connectionText','vrBtn','vrBtnLabel','fullscreenBtn','settingsBtn',
     'alertBanner','alertTitle','alertText','alertSettingsBtn','alertCloseBtn','stage','remoteVideo',
+    'mouthwatchVideo','mouthwatchPip','mouthwatchState','mouthwatchEmpty','mouthwatchBtn','mouthwatchBtnLabel',
+    'feedBtn','feedBtnLabel','parallelBtn','parallelBtnLabel','parallelThetaLabel',
     'liveChip','liveChipText','streamChip','chipRes','chipFps','chipRtt','stageClock',
     'viewBtn','viewBtnLabel','hudToggleBtn','hudToggleLabel','audioBtn','audioBtnLabel','reconnectBtn','fullscreenBtn2',
     'placeholder','placeholderSpinner','placeholderTitle','placeholderText','placeholderRetry','placeholderSettings',
@@ -818,7 +904,10 @@ function cacheUI() {
     'cfgProfessional','cfgProcedure','cfgRoom','cfgSessionCode','cfgNotes','cfgViewMode',
     'cfgRotation','cfgKeepAwake','xrStatus','wakeStatus','toast','vrScene','videoSphere',
     'flatGroup','flatFrame','flatScreen','cameraRig','vrCamera','gazeCursor','vrHudRoot','vrHudVisual',
-    'vrNoSignalRoot','vrNoSignalVisual','leftController','rightController'
+    'vrNoSignalRoot','vrNoSignalVisual','mouthwatchGroup','mouthwatchScreen','mouthwatchFrame',
+    'mouthwatchSoloGroup','mouthwatchSoloScreen','mouthwatchSoloFrame',
+    'parallelGroup','parallelThetaScreen','parallelThetaFrame','parallelMouthwatchScreen','parallelMouthwatchFrame',
+    'leftController','rightController'
   ].forEach(id => { ui[id] = $(id); });
 }
 
@@ -853,6 +942,7 @@ function init() {
   setInterval(tick, 1000);
   tick();
   connect();
+  initMouthwatch();
   window.addEventListener('resize', debounce(drawChart, 120));
   document.addEventListener('pointerdown', requestWakeLock, { once: true, capture: true });
 }
@@ -894,6 +984,9 @@ function onSceneLoaded() {
   setupHudHitAreas();
   applyRotation();
   updateFlatScreenSize();
+  updateMouthwatchScreenSize();
+  updateMouthwatchSoloScreenSize();
+  updateParallelScreenSizes();
   applyViewState();
   drawHud();
   drawNoSignal();
@@ -948,6 +1041,38 @@ function setupHudHitAreas() {
     ui.vrHudRoot.appendChild(hit);
   });
 }
+function isThetaLayout() { return state.feed === 'theta' && !state.parallel; }
+function isMouthwatchOnly() { return state.feed === 'mouthwatch' && !state.parallel; }
+function isHudActionDisabled(action) { return action === 'view' && !isThetaLayout(); }
+function isHudActionActive(action) {
+  if (action === 'parallel') return state.parallel;
+  if (action === 'mouthwatch') return state.mouthwatchVisible && isThetaLayout();
+  return false;
+}
+function getHudStatus() {
+  if (isMouthwatchOnly()) {
+    const live = state.aux.connected && isMouthwatchVideoReady();
+    return live ? { text: 'MW EN VIVO', color: '#8CC63F' }
+      : state.aux.connecting ? { text: 'MW CONECTANDO', color: '#E0A526' }
+      : state.aux.connected ? { text: 'MW SIN VIDEO', color: '#E0A526' }
+      : { text: 'MW SIN SEÑAL', color: '#E06666' };
+  }
+  if (state.parallel) {
+    const thetaLive = state.connected && state.streamVisible;
+    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    if (thetaLive && mwLive) return { text: 'EN VIVO · 2 CÁMARAS', color: '#8CC63F' };
+    if (mwLive) return { text: 'MW EN VIVO · THETA SIN SEÑAL', color: '#E0A526' };
+    if (thetaLive) return { text: 'THETA EN VIVO · MW SIN SEÑAL', color: '#E0A526' };
+    return state.connecting || state.aux.connecting
+      ? { text: 'CONECTANDO', color: '#E0A526' }
+      : { text: 'SIN SEÑAL', color: '#E06666' };
+  }
+  const live = state.connected && state.streamVisible;
+  return live ? { text: 'EN VIVO', color: '#8CC63F' }
+    : state.connecting ? { text: 'CONECTANDO', color: '#E0A526' }
+    : state.connected ? { text: 'SIN VIDEO', color: '#E0A526' }
+    : { text: 'SIN SEÑAL', color: '#E06666' };
+}
 function drawHud() {
   const ctx = state.hudCtx;
   if (!ctx) return;
@@ -959,11 +1084,7 @@ function drawHud() {
   ctx.save(); roundRect(ctx, 1, 1, W - 2, H - 2, 26); ctx.clip();
   ctx.fillStyle = '#8CC63F'; ctx.fillRect(0, 0, W, 5); ctx.restore();
 
-  const live = state.connected && state.streamVisible;
-  const status = live ? { text: 'EN VIVO', color: '#8CC63F' }
-    : state.connecting ? { text: 'CONECTANDO', color: '#E0A526' }
-    : state.connected ? { text: 'SIN VIDEO', color: '#E0A526' }
-    : { text: 'SIN SEÑAL', color: '#E06666' };
+  const status = getHudStatus();
 
   ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
   ctx.font = `700 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
@@ -983,16 +1104,32 @@ function drawHud() {
   ctx.font = `600 62px ${FONT_MONO}`; ctx.fillStyle = '#F3F8FC';
   ctx.fillText(fmtDuration(state.sessionStart ? Date.now() - state.sessionStart : 0), 48, 140);
 
-  const m = state.stats;
   ctx.textAlign = 'right';
-  ctx.font = `600 27px ${FONT_SANS}`; ctx.fillStyle = '#F3F8FC';
-  ctx.fillText(m && m.width ? `${m.width} × ${m.height}` : '—', W - 48, 105);
-  ctx.font = `500 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
-  ctx.fillText(`${m && m.fps != null ? Math.round(m.fps) + ' fps' : '— fps'}  ·  ${m && m.bitrateKbps != null ? NF1.format(m.bitrateKbps / 1000) + ' Mbps' : '— Mbps'}`, W - 48, 137);
-  ctx.font = `500 19px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
-  ctx.fillText(`RTT ${m && m.rttMs != null ? Math.round(m.rttMs) + ' ms' : '—'}  ·  Pérdida ${m && m.lossPct != null ? fmtLoss(m.lossPct) + ' %' : '—'}`, W - 48, 165);
-  ctx.font = `700 19px ${FONT_SANS}`; ctx.fillStyle = qualityColor(state.quality.key);
-  ctx.fillText(state.quality.label || 'Sin datos', W - 48, 195);
+  if (isMouthwatchOnly()) {
+    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    const mwState = mwLive ? { text: 'EN VIVO', color: '#8CC63F' }
+      : state.aux.connecting ? { text: 'CONECTANDO', color: '#E0A526' }
+      : state.aux.connected ? { text: 'SIN VIDEO', color: '#E0A526' }
+      : { text: 'SIN SEÑAL', color: '#E06666' };
+    ctx.font = `600 27px ${FONT_SANS}`; ctx.fillStyle = '#F3F8FC';
+    ctx.fillText('MouthWatch', W - 48, 105);
+    ctx.font = `500 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
+    ctx.fillText('Cámara intraoral · solo video', W - 48, 137);
+    ctx.font = `500 19px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
+    ctx.fillText('Vista exclusiva', W - 48, 165);
+    ctx.font = `700 19px ${FONT_SANS}`; ctx.fillStyle = mwState.color;
+    ctx.fillText(mwState.text, W - 48, 195);
+  } else {
+    const m = state.stats;
+    ctx.font = `600 27px ${FONT_SANS}`; ctx.fillStyle = '#F3F8FC';
+    ctx.fillText(m && m.width ? `${m.width} × ${m.height}` : '—', W - 48, 105);
+    ctx.font = `500 21px ${FONT_SANS}`; ctx.fillStyle = '#9CB4C9';
+    ctx.fillText(`${m && m.fps != null ? Math.round(m.fps) + ' fps' : '— fps'}  ·  ${m && m.bitrateKbps != null ? NF1.format(m.bitrateKbps / 1000) + ' Mbps' : '— Mbps'}`, W - 48, 137);
+    ctx.font = `500 19px ${FONT_SANS}`; ctx.fillStyle = '#708BA1';
+    ctx.fillText(`RTT ${m && m.rttMs != null ? Math.round(m.rttMs) + ' ms' : '—'}  ·  Pérdida ${m && m.lossPct != null ? fmtLoss(m.lossPct) + ' %' : '—'}`, W - 48, 165);
+    ctx.font = `700 19px ${FONT_SANS}`; ctx.fillStyle = qualityColor(state.quality.key);
+    ctx.fillText(state.quality.label || 'Sin datos', W - 48, 195);
+  }
 
   ctx.strokeStyle = 'rgba(255,255,255,.09)'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(48, 218); ctx.lineTo(W - 48, 218); ctx.stroke();
@@ -1011,21 +1148,40 @@ function drawHud() {
   if (state.hudTexture) state.hudTexture.needsUpdate = true;
 }
 function drawHudButton(ctx, btn) {
-  const hover = state.hudHover === btn.action;
+  const disabled = isHudActionDisabled(btn.action);
+  const active = isHudActionActive(btn.action);
+  const hover = !disabled && state.hudHover === btn.action;
   const exit = btn.action === 'exit';
-  const fg = hover ? '#FFFFFF' : (exit ? '#F2A6A0' : '#EAF3FA');
+  const fg = disabled ? '#6F8599' : hover ? '#FFFFFF' : (exit ? '#F2A6A0' : '#EAF3FA');
   roundRect(ctx, btn.x, btn.y, btn.w, btn.h, 10);
-  ctx.fillStyle = hover ? (exit ? '#B3261E' : '#8CC63F') : (exit ? 'rgba(179,38,30,.14)' : 'rgba(255,255,255,.055)');
+  ctx.fillStyle = disabled ? 'rgba(255,255,255,.025)'
+    : hover ? (exit ? '#B3261E' : '#8CC63F')
+    : active ? 'rgba(140,198,63,.18)'
+    : (exit ? 'rgba(179,38,30,.14)' : 'rgba(255,255,255,.055)');
   ctx.fill();
   ctx.lineWidth = 1.5;
-  ctx.strokeStyle = hover ? (exit ? '#B3261E' : '#8CC63F') : (exit ? 'rgba(224,102,102,.55)' : '#365772');
+  ctx.strokeStyle = disabled ? 'rgba(255,255,255,.08)'
+    : hover ? (exit ? '#B3261E' : '#8CC63F')
+    : active ? '#8CC63F'
+    : (exit ? 'rgba(224,102,102,.55)' : '#365772');
   ctx.stroke();
   drawHudIcon(ctx, btn.action, btn.x + 30, btn.y + btn.h / 2, fg);
   ctx.font = `600 22px ${FONT_SANS}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillStyle = fg; ctx.fillText(hudButtonLabel(btn.action), btn.x + 56, btn.y + btn.h / 2 + 1);
+  if (btn.action === 'mouthwatch') {
+    const live = state.aux.connected && isMouthwatchVideoReady();
+    ctx.beginPath(); ctx.arc(btn.x + btn.w - 22, btn.y + 22, 5, 0, Math.PI * 2);
+    ctx.fillStyle = live ? '#8CC63F' : (state.aux.connecting || state.aux.connected) ? '#E0A526' : '#E06666';
+    ctx.fill();
+  }
 }
 function hudButtonLabel(action) {
   if (action === 'recenter') return 'Recentrar';
+  if (action === 'feed') return state.feed === 'theta' ? 'Solo MW' : 'Solo Theta';
+  if (action === 'parallel') return 'Paralelo';
+  if (action === 'mouthwatch') return isThetaLayout()
+    ? (state.mouthwatchVisible ? 'Ocultar MW' : 'MouthWatch')
+    : 'Cuadro MW';
   if (action === 'exit') return 'Salir de VR';
   return state.config.vrView === 'sphere' ? 'Vista plana' : 'Vista 360°';
 }
@@ -1038,6 +1194,17 @@ function drawHudIcon(ctx, action, cx, cy, color) {
   } else if (action === 'view') {
     roundRect(ctx, cx - 11, cy - 7, 22, 14, 3); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.stroke();
+  } else if (action === 'mouthwatch') {
+    roundRect(ctx, cx - 13, cy - 9, 19, 14, 2); ctx.stroke();
+    roundRect(ctx, cx - 2, cy - 1, 15, 11, 2); ctx.stroke();
+  } else if (action === 'feed') {
+    ctx.beginPath(); ctx.moveTo(cx - 12, cy - 5); ctx.lineTo(cx + 10, cy - 5);
+    ctx.moveTo(cx + 5, cy - 10); ctx.lineTo(cx + 11, cy - 5); ctx.lineTo(cx + 5, cy);
+    ctx.moveTo(cx + 12, cy + 5); ctx.lineTo(cx - 10, cy + 5);
+    ctx.moveTo(cx - 5, cy); ctx.lineTo(cx - 11, cy + 5); ctx.lineTo(cx - 5, cy + 10); ctx.stroke();
+  } else if (action === 'parallel') {
+    roundRect(ctx, cx - 12, cy - 8, 24, 16, 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, cy - 8); ctx.lineTo(cx, cy + 8); ctx.stroke();
   } else {
     ctx.beginPath(); ctx.moveTo(cx - 9, cy - 9); ctx.lineTo(cx - 9, cy + 9); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(cx - 3, cy); ctx.lineTo(cx + 11, cy); ctx.moveTo(cx + 6, cy - 5); ctx.lineTo(cx + 11, cy); ctx.lineTo(cx + 6, cy + 5); ctx.stroke();
@@ -1091,8 +1258,12 @@ function qualityColor(key) {
   return { excellent: '#8CC63F', good: '#A8D46A', fair: '#E0A526', poor: '#F07167', unknown: '#708BA1' }[key] || '#708BA1';
 }
 function handleHudAction(action) {
+  if (isHudActionDisabled(action)) return;
   if (action === 'recenter') { resetLook(); addEvent('Vista del visor recentrada.', 'info'); }
   else if (action === 'view') { toggleVrView(); }
+  else if (action === 'mouthwatch') { toggleMouthwatch(); }
+  else if (action === 'feed') { toggleFeed(); }
+  else if (action === 'parallel') { toggleParallel(); }
   else if (action === 'exit') { exitVR(); }
 }
 
@@ -1111,11 +1282,17 @@ function updateVrButton() {
   ui.vrBtn.title = state.xrSupported ? 'Entrar en el modo inmersivo de Meta Quest' : 'Explorar la vista 360° en este navegador';
 }
 function applyViewState() {
-  const sphere = state.streamVisible && (state.inVR ? state.config.vrView === 'sphere' : state.preview360);
-  const flat = state.streamVisible && state.inVR && state.config.vrView === 'flat';
+  const thetaLayout = isThetaLayout();
+  if (!thetaLayout && state.preview360) {
+    state.preview360 = false;
+    state.config.preview360 = false;
+  }
+  const sphere = thetaLayout && state.streamVisible && (state.inVR ? state.config.vrView === 'sphere' : state.preview360);
+  const flat = thetaLayout && state.streamVisible && state.inVR && state.config.vrView === 'flat';
   if (ui.videoSphere) ui.videoSphere.setAttribute('visible', sphere);
   if (ui.flatGroup) ui.flatGroup.setAttribute('visible', flat);
-  if (ui.vrNoSignalRoot) ui.vrNoSignalRoot.setAttribute('visible', !state.streamVisible && state.sceneReady);
+  if (ui.vrNoSignalRoot) ui.vrNoSignalRoot.setAttribute('visible', thetaLayout && !state.streamVisible && state.sceneReady);
+  if (ui.parallelThetaScreen) ui.parallelThetaScreen.setAttribute('visible', Boolean(state.streamVisible));
   if (ui.stage) ui.stage.classList.toggle('preview-360', state.preview360);
   setText(ui.viewBtnLabel, state.preview360 ? 'Vista plana' : 'Vista 360°');
   if (ui.viewBtn) ui.viewBtn.setAttribute('aria-label', state.preview360 ? 'Cambiar a vista plana' : 'Cambiar a vista 360 grados');
@@ -1124,8 +1301,52 @@ function applyViewState() {
   }
   updateHudVisibility();
   updateVrButton();
+  updateLayoutUI();
   drawHud();
   drawNoSignal();
+}
+function updateLayoutUI() {
+  const thetaLayout = isThetaLayout();
+  if (ui.stage) {
+    ui.stage.classList.toggle('feed-mouthwatch', isMouthwatchOnly());
+    ui.stage.classList.toggle('mode-parallel', state.parallel);
+  }
+  if (ui.viewBtn) ui.viewBtn.hidden = !thetaLayout;
+  if (ui.parallelThetaLabel) ui.parallelThetaLabel.hidden = !state.parallel;
+  if (ui.feedBtn) {
+    const mouthwatchOnly = isMouthwatchOnly();
+    setText(ui.feedBtnLabel, state.feed === 'theta' ? 'Solo MouthWatch' : 'Solo Theta');
+    const feedLabel = state.parallel
+      ? (state.feed === 'theta' ? 'Vista en paralelo. Mostrar solo la cámara MouthWatch' : 'Vista en paralelo. Mostrar solo la cámara Theta')
+      : state.feed === 'theta'
+        ? 'Vista actual Theta. Mostrar solo la cámara MouthWatch'
+        : 'Vista actual MouthWatch. Mostrar solo la cámara Theta';
+    ui.feedBtn.setAttribute('aria-pressed', String(mouthwatchOnly));
+    ui.feedBtn.setAttribute('aria-label', feedLabel);
+    ui.feedBtn.title = feedLabel;
+  }
+  if (ui.parallelBtn) {
+    const parallelLabel = state.parallel ? 'Volver a la vista exclusiva' : 'Mostrar Theta y MouthWatch en paralelo plano';
+    setText(ui.parallelBtnLabel, state.parallel ? 'Cerrar paralelo' : 'Paralelo');
+    ui.parallelBtn.setAttribute('aria-pressed', String(state.parallel));
+    ui.parallelBtn.setAttribute('aria-label', parallelLabel);
+    ui.parallelBtn.classList.toggle('is-active', state.parallel);
+    ui.parallelBtn.title = parallelLabel;
+  }
+  if (ui.streamChip) {
+    const label = state.parallel
+      ? `${state.config.stream} + ${state.config.auxStream}`
+      : (state.feed === 'mouthwatch' ? state.config.auxStream : state.config.stream);
+    setText(ui.streamChip, label);
+  }
+  const showThetaMetrics = state.feed === 'theta' || state.parallel;
+  [ui.chipRes, ui.chipFps, ui.chipRtt].forEach(el => { if (el) el.style.display = showThetaMetrics ? '' : 'none'; });
+  if (ui.reconnectBtn) {
+    ui.reconnectBtn.title = isMouthwatchOnly()
+      ? 'Reconectar la cámara MouthWatch'
+      : state.parallel ? 'Reconectar ambas cámaras' : 'Reconectar la cámara Theta';
+  }
+  updateMouthwatchUI();
 }
 function updateHudVisibility() {
   const visible = state.inVR || !state.hudHidden;
@@ -1196,8 +1417,33 @@ function updateFlatScreenSize() {
   ui.flatFrame.setAttribute('width', (width + 0.06).toFixed(3));
   ui.flatFrame.setAttribute('height', (finalHeight + 0.06).toFixed(3));
 }
+function fitVideoPlane(screen, frame, video, maxW, maxH, pad = 0.04) {
+  if (!screen || !frame) return;
+  const vw = (video && video.videoWidth) || 16;
+  const vh = (video && video.videoHeight) || 9;
+  const aspect = vw / vh || 16 / 9;
+  let width = maxW;
+  let height = width / aspect;
+  if (height > maxH) { height = maxH; width = height * aspect; }
+  screen.setAttribute('width', width.toFixed(3));
+  screen.setAttribute('height', height.toFixed(3));
+  frame.setAttribute('width', (width + pad).toFixed(3));
+  frame.setAttribute('height', (height + pad).toFixed(3));
+}
+function updateMouthwatchSoloScreenSize() {
+  fitVideoPlane(ui.mouthwatchSoloScreen, ui.mouthwatchSoloFrame, ui.mouthwatchVideo, 1.14, 0.60, 0.05);
+}
+function updateParallelScreenSizes() {
+  fitVideoPlane(ui.parallelThetaScreen, ui.parallelThetaFrame, ui.remoteVideo, 0.88, 0.50, 0.04);
+  fitVideoPlane(ui.parallelMouthwatchScreen, ui.parallelMouthwatchFrame, ui.mouthwatchVideo, 0.88, 0.50, 0.04);
+}
 function togglePreview360() {
   if (!state.sceneReady) { showToast('La escena 360° aún se está preparando.', 'warn'); return; }
+  if (!isThetaLayout()) {
+    state.feed = 'theta';
+    state.parallel = false;
+    addEvent('Vista 360°: volviendo a la cámara Theta.', 'info');
+  }
   state.preview360 = !state.preview360;
   state.config.preview360 = state.preview360;
   saveConfig();
@@ -1205,6 +1451,10 @@ function togglePreview360() {
   if (state.preview360) showToast('Vista 360°. Arrastra para mirar alrededor.', 'info');
 }
 function toggleVrView() {
+  if (!isThetaLayout()) {
+    showToast('La proyección 360° solo está disponible para la cámara Theta.', 'warn');
+    return;
+  }
   state.config.vrView = state.config.vrView === 'sphere' ? 'flat' : 'sphere';
   saveConfig();
   applyViewState();
@@ -1261,7 +1511,7 @@ function initVideoEvents() {
   if (!v) return;
   v.addEventListener('loadedmetadata', onVideoReady);
   v.addEventListener('loadeddata', onVideoReady);
-  v.addEventListener('resize', updateFlatScreenSize);
+  v.addEventListener('resize', () => { updateFlatScreenSize(); updateParallelScreenSizes(); });
   v.addEventListener('play', () => { updateStreamVisibility(); });
   v.addEventListener('error', () => { addEvent('El elemento de video informó un error de reproducción.', 'warn'); });
 }
@@ -1269,10 +1519,362 @@ function onVideoReady() {
   if (!ui.remoteVideo || !ui.remoteVideo.videoWidth) return;
   state.hasVideo = true;
   updateFlatScreenSize();
+  updateParallelScreenSizes();
   if (state.connected) {
     state.stalled = false; state.stallCount = 0;
     updateStreamVisibility();
   }
+}
+
+/* ── Transmisión secundaria MouthWatch ─────────────────────── */
+function initMouthwatch() {
+  const v = ui.mouthwatchVideo;
+  if (v) {
+    v.addEventListener('loadedmetadata', () => { updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); updateMouthwatchUI(); });
+    v.addEventListener('loadeddata', updateMouthwatchUI);
+    v.addEventListener('resize', () => { updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); });
+    v.addEventListener('play', updateMouthwatchUI);
+    v.addEventListener('emptied', updateMouthwatchUI);
+    v.addEventListener('error', () => { addEvent('El video MouthWatch informó un error de reproducción.', 'warn'); });
+  }
+  updateMouthwatchScreenSize();
+  updateMouthwatchUI();
+  addEvent(`Recepción secundaria MouthWatch · stream «${state.config.auxStream}».`, 'info');
+  connectMouthwatch();
+}
+function isMouthwatchVideoReady() {
+  const v = ui.mouthwatchVideo;
+  return Boolean(v && v.readyState >= 2 && v.videoWidth > 0);
+}
+function updateMouthwatchScreenSize() {
+  fitVideoPlane(ui.mouthwatchScreen, ui.mouthwatchFrame, ui.mouthwatchVideo, 0.82, 0.46, 0.04);
+}
+function updateMouthwatchUI() {
+  const aux = state.aux;
+  const live = Boolean(aux.connected && isMouthwatchVideoReady());
+  const stateKey = live ? 'live' : (aux.connecting || aux.connected) ? 'connecting' : 'offline';
+  const thetaLayout = isThetaLayout();
+  const mouthwatchOnly = isMouthwatchOnly();
+  if (live && aux.connectTimeout) {
+    clearTimeout(aux.connectTimeout);
+    aux.connectTimeout = null;
+  }
+  if (ui.mouthwatchPip) {
+    const showPip = Boolean(!state.inVR && !state.preview360 && (mouthwatchOnly || state.parallel || (thetaLayout && state.mouthwatchVisible)));
+    ui.mouthwatchPip.dataset.visible = String(showPip);
+    ui.mouthwatchPip.dataset.state = stateKey;
+    ui.mouthwatchPip.setAttribute('aria-hidden', String(!showPip));
+  }
+  if (ui.mouthwatchState) {
+    ui.mouthwatchState.textContent = live ? 'EN VIVO'
+      : aux.connected ? 'Sin video'
+      : aux.connecting ? 'Conectando…'
+      : aux.nextRetryAt ? 'Reintentando…' : 'Sin señal';
+  }
+  if (ui.mouthwatchEmpty) {
+    ui.mouthwatchEmpty.hidden = live;
+    ui.mouthwatchEmpty.textContent = aux.connecting ? 'Conectando MouthWatch…'
+      : aux.connected ? 'Esperando video de MouthWatch…'
+      : aux.nextRetryAt ? 'Reintentando MouthWatch…'
+      : 'Sin señal de MouthWatch';
+  }
+  if (ui.mouthwatchGroup) {
+    const show3D = Boolean(thetaLayout && state.mouthwatchVisible && state.sceneReady && (state.inVR || state.preview360));
+    ui.mouthwatchGroup.setAttribute('visible', show3D);
+  }
+  if (ui.mouthwatchSoloGroup) {
+    const show3D = Boolean(mouthwatchOnly && state.sceneReady && state.inVR);
+    ui.mouthwatchSoloGroup.setAttribute('visible', show3D);
+  }
+  if (ui.parallelGroup) {
+    const show3D = Boolean(state.parallel && state.sceneReady && state.inVR);
+    ui.parallelGroup.setAttribute('visible', show3D);
+  }
+  if (ui.mouthwatchScreen) ui.mouthwatchScreen.setAttribute('visible', live);
+  if (ui.mouthwatchSoloScreen) ui.mouthwatchSoloScreen.setAttribute('visible', live);
+  if (ui.parallelMouthwatchScreen) ui.parallelMouthwatchScreen.setAttribute('visible', live);
+  if (ui.parallelThetaScreen) ui.parallelThetaScreen.setAttribute('visible', Boolean(state.streamVisible));
+  if (ui.mouthwatchBtn) {
+    const boxActive = thetaLayout && state.mouthwatchVisible;
+    ui.mouthwatchBtn.setAttribute('aria-pressed', String(boxActive));
+    ui.mouthwatchBtn.classList.toggle('is-active', boxActive);
+    const mouthwatchTitle = thetaLayout
+      ? (state.mouthwatchVisible ? 'Ocultar la transmisión MouthWatch' : 'Mostrar la transmisión MouthWatch')
+      : 'Volver a Theta y mostrar el cuadro MouthWatch';
+    ui.mouthwatchBtn.title = mouthwatchTitle;
+    ui.mouthwatchBtn.setAttribute('aria-label', mouthwatchTitle);
+    setText(ui.mouthwatchBtnLabel, thetaLayout
+      ? (state.mouthwatchVisible ? 'Ocultar MouthWatch' : 'MouthWatch')
+      : 'Cuadro MouthWatch');
+  }
+  refreshStatus();
+  drawHud();
+}
+function setMouthwatchVisible(visible) {
+  state.mouthwatchVisible = Boolean(visible);
+  updateMouthwatchUI();
+  if (state.mouthwatchVisible) {
+    const ready = isMouthwatchVideoReady();
+    const message = ready ? 'MouthWatch en pantalla.'
+      : state.aux.connected ? 'MouthWatch conectado; esperando video.'
+      : 'MouthWatch sin señal; se reintentará automáticamente.';
+    showToast(message, ready ? 'info' : 'warn', 2600);
+  }
+}
+function toggleMouthwatch() {
+  if (!isThetaLayout()) {
+    state.feed = 'theta';
+    state.parallel = false;
+    if (state.preview360) {
+      state.preview360 = false;
+      state.config.preview360 = false;
+      saveConfig();
+    }
+    applyViewState();
+    setMouthwatchVisible(true);
+    addEvent('Vista Theta con cuadro MouthWatch.', 'info');
+    return;
+  }
+  setMouthwatchVisible(!state.mouthwatchVisible);
+}
+function toggleFeed() {
+  state.feed = state.feed === 'theta' ? 'mouthwatch' : 'theta';
+  state.parallel = false;
+  if (state.preview360) {
+    state.preview360 = false;
+    state.config.preview360 = false;
+    saveConfig();
+  }
+  applyViewState();
+  const message = state.feed === 'mouthwatch' ? 'Vista exclusiva MouthWatch.' : 'Vista exclusiva Theta.';
+  addEvent(message, 'info');
+  showToast(message, 'info', 2400);
+}
+function toggleParallel() {
+  state.parallel = !state.parallel;
+  if (state.parallel && state.preview360) {
+    state.preview360 = false;
+    state.config.preview360 = false;
+    saveConfig();
+  }
+  applyViewState();
+  const message = state.parallel
+    ? 'Modo paralelo plano: Theta y MouthWatch.'
+    : `Vista exclusiva ${state.feed === 'theta' ? 'Theta' : 'MouthWatch'}.`;
+  addEvent(message, 'info');
+  showToast(message, 'info', 2600);
+}
+async function connectMouthwatch() {
+  const aux = state.aux;
+  if (aux.connecting) return;
+  clearTimeout(aux.retryTimer);
+  aux.retryTimer = null;
+  aux.nextRetryAt = null;
+  aux.connected = false;
+  aux.connecting = true;
+  aux.attempts += 1;
+  const gen = ++aux.generation;
+  const stream = state.config.auxStream || DEFAULTS.auxStream;
+  resetMouthwatchVideo();
+  updateMouthwatchUI();
+  addEvent(`Intento de conexión MouthWatch #${aux.attempts} · ${stream}.`, 'info');
+  const started = performance.now();
+
+  let pc = null;
+  try {
+    pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
+    aux.pc = pc;
+    pc.addTransceiver('video', { direction: 'recvonly' });
+
+    pc.ontrack = (ev) => {
+      if (aux.pc !== pc || gen !== aux.generation) return;
+      const video = ui.mouthwatchVideo;
+      if (!video || ev.track.kind !== 'video') return;
+      let media = video.srcObject instanceof MediaStream ? video.srcObject : new MediaStream();
+      if (!media.getTracks().some(t => t.id === ev.track.id)) media.addTrack(ev.track);
+      video.srcObject = media;
+      const played = video.play();
+      if (played && typeof played.catch === 'function') {
+        played.catch((err) => {
+          if (err && (err.name === 'AbortError' || /interrupted by a new load request/i.test(err.message || ''))) return;
+          if (aux.autoplayWarned) return;
+          aux.autoplayWarned = true;
+          addEvent(`El navegador no inició el video MouthWatch: ${err.message || err}`, 'warn');
+        });
+      }
+      updateMouthwatchUI();
+      addEvent('Pista de video MouthWatch recibida.', 'success');
+    };
+
+    pc.onconnectionstatechange = () => {
+      if (aux.pc !== pc || gen !== aux.generation) return;
+      const connectionState = pc.connectionState || '—';
+      if (connectionState === 'connected') {
+        clearTimeout(aux.connectTimeout);
+        clearTimeout(aux.disconnectTimer);
+        aux.disconnectTimer = null;
+        if (!aux.connected) {
+          aux.connected = true;
+          aux.connecting = false;
+          aux.retryAttempt = 0;
+          aux.nextRetryAt = null;
+          addEvent('Enlace WebRTC MouthWatch conectado.', 'success');
+        }
+        aux.connectTimeout = setTimeout(() => {
+          if (aux.pc !== pc || gen !== aux.generation) return;
+          if (!isMouthwatchVideoReady()) {
+            scheduleMouthwatchRetry('MouthWatch no recibió video a tiempo.');
+          }
+        }, 15000);
+        updateMouthwatchUI();
+      } else if (connectionState === 'disconnected') {
+        clearTimeout(aux.disconnectTimer);
+        aux.disconnectTimer = setTimeout(() => {
+          if (aux.pc !== pc || gen !== aux.generation) return;
+          if (pc.connectionState === 'disconnected') {
+            scheduleMouthwatchRetry('La conexión MouthWatch se interrumpió.');
+          }
+        }, 5000);
+        updateMouthwatchUI();
+      } else if (connectionState === 'failed' || connectionState === 'closed') {
+        if (aux.pc !== pc) return;
+        scheduleMouthwatchRetry(`El enlace MouthWatch pasó a estado ${connectionState}.`, 'error');
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      if (aux.pc !== pc || gen !== aux.generation) return;
+      if (pc.iceConnectionState === 'failed') {
+        scheduleMouthwatchRetry('La ruta ICE de MouthWatch falló.', 'error');
+      }
+    };
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await waitForIce(pc, 2500);
+    if (aux.pc !== pc || gen !== aux.generation) return;
+
+    aux.abortController = new AbortController();
+    const res = await fetch(`/${encodeURIComponent(stream)}/whep`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/sdp', 'Accept': 'application/sdp' },
+      body: pc.localDescription.sdp,
+      signal: aux.abortController.signal
+    });
+    if (aux.pc !== pc || gen !== aux.generation) return;
+    if (!res.ok) {
+      let detail = '';
+      try { detail = (await res.text()).trim().slice(0, 160); } catch { /* sin cuerpo */ }
+      throw new Error(`WHEP MouthWatch respondió ${res.status}${detail ? ` · ${detail}` : ''}.`);
+    }
+
+    const location = res.headers.get('Location');
+    if (location) {
+      try { aux.resource = new URL(location, window.location.origin).href; } catch { aux.resource = location; }
+    }
+    const answer = await res.text();
+    if (!answer.trim()) throw new Error('El servidor WHEP devolvió una respuesta SDP vacía para MouthWatch.');
+    aux.abortController = null;
+    await pc.setRemoteDescription({ type: 'answer', sdp: answer });
+    if (aux.pc !== pc || gen !== aux.generation) return;
+
+    const setupMs = Math.round(performance.now() - started);
+    addEvent(`WHEP MouthWatch negociado en ${setupMs} ms.`, 'success');
+    clearTimeout(aux.connectTimeout);
+    aux.connectTimeout = setTimeout(() => {
+      if (aux.pc !== pc || gen !== aux.generation) return;
+      if (!aux.connected && !isMouthwatchVideoReady() && !aux.retryTimer) {
+        scheduleMouthwatchRetry('MouthWatch no completó el enlace a tiempo.');
+      }
+    }, 15000);
+  } catch (err) {
+    if (aux.pc !== pc || gen !== aux.generation) return;
+    const message = err && err.name === 'AbortError'
+      ? 'Conexión MouthWatch cancelada.'
+      : (err && err.message ? err.message : String(err || 'Error desconocido'));
+    scheduleMouthwatchRetry(`No se pudo conectar MouthWatch: ${message}`, 'error');
+  }
+}
+function cleanupMouthwatch(deleteResource = true) {
+  const aux = state.aux;
+  clearTimeout(aux.connectTimeout);
+  aux.connectTimeout = null;
+  clearTimeout(aux.disconnectTimer);
+  aux.disconnectTimer = null;
+
+  if (aux.abortController) {
+    try { aux.abortController.abort(); } catch { /* ya finalizó */ }
+    aux.abortController = null;
+  }
+
+  const pc = aux.pc;
+  aux.pc = null;
+  if (pc) {
+    pc.onconnectionstatechange = null;
+    pc.oniceconnectionstatechange = null;
+    pc.ontrack = null;
+    try { pc.close(); } catch { /* ya cerrada */ }
+  }
+
+  const resource = aux.resource;
+  aux.resource = null;
+  if (deleteResource && resource) {
+    try { fetch(resource, { method: 'DELETE', keepalive: true }).catch(() => {}); } catch { /* sin CORS */ }
+  }
+
+  aux.connected = false;
+  aux.connecting = false;
+}
+function resetMouthwatchVideo() {
+  const video = ui.mouthwatchVideo;
+  if (!video) return;
+  const hadSource = Boolean(video.srcObject || video.getAttribute('src'));
+  try { video.pause(); } catch { /* sin reproducción */ }
+  const stream = video.srcObject;
+  if (stream && typeof stream.getTracks === 'function') {
+    stream.getTracks().forEach(track => { try { track.stop(); } catch { /* ya detenida */ } });
+  }
+  video.srcObject = null;
+  video.muted = true;
+  if (hadSource) {
+    video.removeAttribute('src');
+    try { video.load(); } catch { /* opcional */ }
+  }
+  updateMouthwatchUI();
+}
+function scheduleMouthwatchRetry(reason, kind = 'warn') {
+  const aux = state.aux;
+  if (aux.retryTimer) return;
+
+  cleanupMouthwatch(true);
+  aux.connected = false;
+  aux.connecting = false;
+  resetMouthwatchVideo();
+  aux.retryAttempt += 1;
+  const delay = Math.min(30000, 2000 * Math.pow(2, Math.min(aux.retryAttempt - 1, 4)));
+  aux.nextRetryAt = Date.now() + delay;
+  if (reason) addEvent(reason, kind);
+  updateMouthwatchUI();
+
+  aux.retryTimer = setTimeout(() => {
+    aux.retryTimer = null;
+    aux.nextRetryAt = null;
+    connectMouthwatch();
+  }, delay);
+}
+function reconnectMouthwatch(reason = 'Reconexión MouthWatch solicitada.') {
+  const aux = state.aux;
+  aux.generation += 1;
+  clearTimeout(aux.retryTimer);
+  aux.retryTimer = null;
+  aux.nextRetryAt = null;
+  aux.retryAttempt = 0;
+  cleanupMouthwatch(true);
+  resetMouthwatchVideo();
+  aux.connected = false;
+  aux.connecting = false;
+  if (reason) addEvent(reason, 'info');
+  connectMouthwatch();
 }
 
 /* ── Interfaz de estado ─────────────────────────────────────── */
@@ -1617,6 +2219,26 @@ function markDisconnected(reason) {
 }
 
 function refreshStatus() {
+  if (isMouthwatchOnly()) {
+    const live = state.aux.connected && isMouthwatchVideoReady();
+    if (live) { setStatus('live', 'MouthWatch en vivo', 'MW EN VIVO'); return; }
+    if (state.aux.connecting) { setStatus('connecting', 'Conectando MouthWatch…', 'CONECTANDO'); return; }
+    if (state.aux.connected) { setStatus('warn', 'MouthWatch conectado · esperando video', 'MW SIN VIDEO'); return; }
+    if (state.aux.nextRetryAt) {
+      const left = Math.max(0, Math.ceil((state.aux.nextRetryAt - Date.now()) / 1000));
+      setStatus('offline', `MouthWatch reintentando en ${left} s`, 'MW SIN SEÑAL');
+      return;
+    }
+    setStatus('offline', 'MouthWatch sin señal', 'MW SIN SEÑAL');
+    return;
+  }
+  if (state.parallel) {
+    const thetaLive = state.connected && state.streamVisible;
+    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    if (thetaLive && mwLive) { setStatus('live', 'En vivo · Theta + MouthWatch', 'EN VIVO'); return; }
+    if (thetaLive) { setStatus('warn', 'Theta en vivo · MouthWatch sin señal', 'THETA EN VIVO'); return; }
+    if (mwLive) { setStatus('warn', 'MouthWatch en vivo · Theta sin señal', 'MW EN VIVO'); return; }
+  }
   if (state.connected) {
     const unstable = state.pcState === 'disconnected' || state.iceState === 'disconnected';
     if (state.stalled || state.pcState === 'failed') setStatus('warn', 'Video detenido', 'SIN VIDEO');
@@ -2209,6 +2831,12 @@ function buildReport() {
       videoCodec: state.codec,
       audioCodec: state.audioCodec
     },
+    secondaryStream: {
+      stream: state.config.auxStream,
+      connected: Boolean(state.aux.connected),
+      attempts: state.aux.attempts,
+      videoReady: isMouthwatchVideoReady()
+    },
     quality: state.quality,
     latestMetrics: state.stats ? { ...state.stats } : null,
     metricsSummary: aggregateSamples(),
@@ -2382,6 +3010,7 @@ function saveSettings(ev) {
   };
   saveConfig();
   applyConfigLabels();
+  updateLayoutUI();
   closeSettings();
   addEvent(`Configuración de sesión actualizada · stream «${state.config.stream}».`, 'info');
   if (state.config.keepAwake) requestWakeLock(); else releaseWakeLock();
@@ -2451,9 +3080,16 @@ function bindEvents() {
     ui.alertCloseBtn.addEventListener('click', () => { state.alertDismissed = true; ui.alertBanner.hidden = true; });
   }
   if (ui.viewBtn) ui.viewBtn.addEventListener('click', togglePreview360);
+  if (ui.mouthwatchBtn) ui.mouthwatchBtn.addEventListener('click', toggleMouthwatch);
+  if (ui.feedBtn) ui.feedBtn.addEventListener('click', toggleFeed);
+  if (ui.parallelBtn) ui.parallelBtn.addEventListener('click', toggleParallel);
   if (ui.hudToggleBtn) ui.hudToggleBtn.addEventListener('click', toggleHudPanel);
   if (ui.audioBtn) ui.audioBtn.addEventListener('click', toggleAudio);
-  if (ui.reconnectBtn) ui.reconnectBtn.addEventListener('click', () => reconnectNow());
+  if (ui.reconnectBtn) ui.reconnectBtn.addEventListener('click', () => {
+    if (isMouthwatchOnly()) { reconnectMouthwatch('Reconexión MouthWatch solicitada desde la barra.'); return; }
+    reconnectNow();
+    if (state.parallel) reconnectMouthwatch('Reconexión del modo paralelo solicitada.');
+  });
   if (ui.placeholderRetry) ui.placeholderRetry.addEventListener('click', () => reconnectNow());
   if (ui.clearLogBtn) ui.clearLogBtn.addEventListener('click', () => { state.events = []; renderEvents(); showToast('Registro de eventos limpiado.', 'info', 2200); });
   if (ui.downloadJson) ui.downloadJson.addEventListener('click', downloadJson);
@@ -2481,23 +3117,27 @@ function bindEvents() {
   window.addEventListener('online', () => {
     addEvent('Red restablecida.', 'success');
     if (!state.connected && !state.connecting) reconnectNow('Red restablecida: reconectando.');
+    if (!state.aux.connected && !state.aux.connecting && !state.aux.retryTimer) reconnectMouthwatch('Red restablecida: reconectando MouthWatch.');
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       requestWakeLock();
       drawChart();
       if (!state.connected && !state.connecting && !state.retryTimer) connect();
+      if (!state.aux.connected && !state.aux.connecting && !state.aux.retryTimer) connectMouthwatch();
     }
   });
   document.addEventListener('fullscreenchange', () => {
-    setTimeout(() => { drawChart(); updateFlatScreenSize(); }, 160);
+    setTimeout(() => { drawChart(); updateFlatScreenSize(); updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); }, 160);
   });
   window.addEventListener('pagehide', () => {
     cleanupPeer(true);
+    cleanupMouthwatch(true);
     releaseWakeLock();
   });
   window.addEventListener('pageshow', (ev) => {
     if (ev.persisted && !state.connected && !state.connecting) reconnectNow('Página restaurada: reconectando.');
+    if (ev.persisted && !state.aux.connected && !state.aux.connecting) reconnectMouthwatch('Página restaurada: reconectando MouthWatch.');
   });
 }
 
