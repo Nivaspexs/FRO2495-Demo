@@ -113,7 +113,7 @@ svg{display:block}
 .stage-brand{position:absolute;left:14px;top:12px;z-index:3;color:rgba(255,255,255,.62);font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;text-shadow:0 1px 6px rgba(0,0,0,.7);pointer-events:none}
 .stage-clock{position:absolute;right:14px;top:12px;z-index:3;display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid rgba(255,255,255,.14);border-radius:4px;background:rgba(3,14,26,.55);color:#EAF2F8;font-family:var(--mono);font-size:10.5px;pointer-events:none;backdrop-filter:blur(6px)}
 .stage-clock svg{width:12px;height:12px;opacity:.7}
-.mouthwatch-pip{position:absolute;right:14px;top:48px;z-index:3;width:min(34%,330px);aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(255,255,255,.24);border-radius:7px;background:#06121E;box-shadow:0 14px 38px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease}
+.mouthwatch-pip{position:absolute;right:14px;top:48px;z-index:6;width:min(34%,330px);aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(255,255,255,.24);border-radius:7px;background:#06121E;box-shadow:0 14px 38px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s ease}
 .mouthwatch-pip[data-visible="true"]{opacity:1}
 .mouthwatch-pip video{display:block;width:100%;height:100%;object-fit:contain;background:#06121E}
 .mouthwatch-pip-bar{position:absolute;top:0;right:0;left:0;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 7px;background:linear-gradient(to bottom,rgba(3,12,22,.82),rgba(3,12,22,0));pointer-events:none}
@@ -145,10 +145,9 @@ svg{display:block}
 .stage.mode-parallel > #remoteVideo{inset:0 auto 0 0;width:50%;height:100%}
 .stage.mode-parallel > #placeholder{right:50%;padding:18px}
 .stage.mode-parallel > #placeholder h3{font-size:18px}
-.stage.mode-parallel .stage-overlay{z-index:6}
 .stage.mode-parallel .mouthwatch-pip{top:0;right:0;bottom:0;left:auto;width:50%;height:auto;aspect-ratio:auto;border:0;border-left:1px solid rgba(255,255,255,.16);border-radius:0;box-shadow:none;z-index:2}
 .stage.mode-parallel::after{content:"";position:absolute;top:0;bottom:0;left:50%;z-index:3;width:1px;background:rgba(255,255,255,.18);pointer-events:none}
-.stage-overlay{position:absolute;inset:0;z-index:4;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;pointer-events:none}
+.stage-overlay{position:absolute;inset:0;z-index:7;display:flex;flex-direction:column;justify-content:flex-end;padding:14px;pointer-events:none}
 .stage-overlay::before{content:"";position:absolute;right:0;bottom:0;left:0;height:140px;background:linear-gradient(to top,rgba(3,12,22,.82),rgba(3,12,22,0));pointer-events:none}
 .stage-controls{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .control-group{display:flex;gap:7px;flex-wrap:wrap}
@@ -767,6 +766,7 @@ const state = {
   stallCount: 0, stalled: false, stallReconnect: false, wakeLock: null,
   connectTimeout: null, autoplayWarned: false,
   mouthwatchVisible: false, feed: 'theta', parallel: false,
+  autoFallbackActive: false, autoFallbackSuppressed: false, thetaNoSignalSince: 0,
   aux: {
     pc: null, resource: null, abortController: null, retryTimer: null,
     connectTimeout: null, disconnectTimer: null, nextRetryAt: null, retryAttempt: 0, attempts: 0,
@@ -1051,7 +1051,7 @@ function isHudActionActive(action) {
 }
 function getHudStatus() {
   if (isMouthwatchOnly()) {
-    const live = state.aux.connected && isMouthwatchVideoReady();
+    const live = isMouthwatchLive();
     return live ? { text: 'MW EN VIVO', color: '#8CC63F' }
       : state.aux.connecting ? { text: 'MW CONECTANDO', color: '#E0A526' }
       : state.aux.connected ? { text: 'MW SIN VIDEO', color: '#E0A526' }
@@ -1059,7 +1059,7 @@ function getHudStatus() {
   }
   if (state.parallel) {
     const thetaLive = state.connected && state.streamVisible;
-    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    const mwLive = isMouthwatchLive();
     if (thetaLive && mwLive) return { text: 'EN VIVO · 2 CÁMARAS', color: '#8CC63F' };
     if (mwLive) return { text: 'MW EN VIVO · THETA SIN SEÑAL', color: '#E0A526' };
     if (thetaLive) return { text: 'THETA EN VIVO · MW SIN SEÑAL', color: '#E0A526' };
@@ -1106,7 +1106,7 @@ function drawHud() {
 
   ctx.textAlign = 'right';
   if (isMouthwatchOnly()) {
-    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    const mwLive = isMouthwatchLive();
     const mwState = mwLive ? { text: 'EN VIVO', color: '#8CC63F' }
       : state.aux.connecting ? { text: 'CONECTANDO', color: '#E0A526' }
       : state.aux.connected ? { text: 'SIN VIDEO', color: '#E0A526' }
@@ -1169,7 +1169,7 @@ function drawHudButton(ctx, btn) {
   ctx.font = `600 22px ${FONT_SANS}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillStyle = fg; ctx.fillText(hudButtonLabel(btn.action), btn.x + 56, btn.y + btn.h / 2 + 1);
   if (btn.action === 'mouthwatch') {
-    const live = state.aux.connected && isMouthwatchVideoReady();
+    const live = isMouthwatchLive();
     ctx.beginPath(); ctx.arc(btn.x + btn.w - 22, btn.y + 22, 5, 0, Math.PI * 2);
     ctx.fillStyle = live ? '#8CC63F' : (state.aux.connecting || state.aux.connected) ? '#E0A526' : '#E06666';
     ctx.fill();
@@ -1368,7 +1368,16 @@ function setStreamVisible(visible) {
   const changed = state.streamVisible !== visible;
   state.streamVisible = visible;
   if (ui.stage) ui.stage.classList.toggle('has-signal', visible);
-  if (changed) applyViewState();
+  if (!changed) return;
+  if (visible) {
+    state.thetaNoSignalSince = 0;
+    state.autoFallbackSuppressed = false;
+    if (restoreThetaFromFallback()) return;
+  } else {
+    state.thetaNoSignalSince = Date.now();
+  }
+  applyViewState();
+  if (!visible) maybeAutoFallbackToMouthwatch();
 }
 function updateStreamVisibility() {
   const ready = state.connected && state.hasVideo && !state.stalled && ui.remoteVideo && ui.remoteVideo.readyState >= 2;
@@ -1438,6 +1447,7 @@ function updateParallelScreenSizes() {
   fitVideoPlane(ui.parallelMouthwatchScreen, ui.parallelMouthwatchFrame, ui.mouthwatchVideo, 0.88, 0.50, 0.04);
 }
 function togglePreview360() {
+  markManualViewChoice();
   if (!state.sceneReady) { showToast('La escena 360° aún se está preparando.', 'warn'); return; }
   if (!isThetaLayout()) {
     state.feed = 'theta';
@@ -1532,7 +1542,9 @@ function initMouthwatch() {
   if (v) {
     v.addEventListener('loadedmetadata', () => { updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); updateMouthwatchUI(); });
     v.addEventListener('loadeddata', updateMouthwatchUI);
-    v.addEventListener('resize', () => { updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); });
+    v.addEventListener('canplay', updateMouthwatchUI);
+    v.addEventListener('playing', updateMouthwatchUI);
+    v.addEventListener('resize', () => { updateMouthwatchScreenSize(); updateMouthwatchSoloScreenSize(); updateParallelScreenSizes(); updateMouthwatchUI(); });
     v.addEventListener('play', updateMouthwatchUI);
     v.addEventListener('emptied', updateMouthwatchUI);
     v.addEventListener('error', () => { addEvent('El video MouthWatch informó un error de reproducción.', 'warn'); });
@@ -1546,12 +1558,58 @@ function isMouthwatchVideoReady() {
   const v = ui.mouthwatchVideo;
   return Boolean(v && v.readyState >= 2 && v.videoWidth > 0);
 }
+function isMouthwatchLive() {
+  const aux = state.aux;
+  // El video puede estar listo antes de que se propague connectionState="connected".
+  return Boolean(isMouthwatchVideoReady() && (aux.connected || aux.connecting));
+}
+function isThetaUnavailable() {
+  if (state.parallel) return false;
+  const noFramesTooLong = !state.streamVisible && state.thetaNoSignalSince
+    && Date.now() - state.thetaNoSignalSince >= 5000;
+  if (noFramesTooLong) return true;
+  if (state.connecting) return false;
+  if (!state.connected) return true;
+  return Boolean(state.stalled || state.pcState === 'failed');
+}
+function markManualViewChoice() {
+  state.autoFallbackActive = false;
+  if (isThetaUnavailable()) state.autoFallbackSuppressed = true;
+}
+function isMouthwatchFallbackReady() {
+  const aux = state.aux;
+  const v = ui.mouthwatchVideo;
+  return Boolean(isMouthwatchLive() || aux.connected || (aux.connecting && v && v.srcObject));
+}
+function maybeAutoFallbackToMouthwatch() {
+  // Fallback solo de vista: las conexiones WHEP de ambas cámaras siguen independientes.
+  if (state.autoFallbackActive || state.autoFallbackSuppressed) return false;
+  if (state.parallel || state.feed !== 'theta' || state.streamVisible) return false;
+  if (!isThetaUnavailable() || !isMouthwatchFallbackReady()) return false;
+  state.feed = 'mouthwatch';
+  state.autoFallbackActive = true;
+  applyViewState();
+  addEvent('Theta sin señal; vista MouthWatch activada automáticamente.', 'warn');
+  showToast('Theta no está transmitiendo. Se muestra MouthWatch automáticamente.', 'warn', 4200);
+  return true;
+}
+function restoreThetaFromFallback() {
+  if (!state.autoFallbackActive) return false;
+  state.autoFallbackActive = false;
+  state.autoFallbackSuppressed = false;
+  if (state.feed !== 'mouthwatch' || state.parallel) return false;
+  state.feed = 'theta';
+  applyViewState();
+  addEvent('Theta recuperó la señal; se restaura la vista principal.', 'success');
+  showToast('Theta recuperó la señal. Vista principal restaurada.', 'info', 3200);
+  return true;
+}
 function updateMouthwatchScreenSize() {
   fitVideoPlane(ui.mouthwatchScreen, ui.mouthwatchFrame, ui.mouthwatchVideo, 0.82, 0.46, 0.04);
 }
 function updateMouthwatchUI() {
   const aux = state.aux;
-  const live = Boolean(aux.connected && isMouthwatchVideoReady());
+  const live = isMouthwatchLive();
   const stateKey = live ? 'live' : (aux.connecting || aux.connected) ? 'connecting' : 'offline';
   const thetaLayout = isThetaLayout();
   const mouthwatchOnly = isMouthwatchOnly();
@@ -1609,6 +1667,7 @@ function updateMouthwatchUI() {
   }
   refreshStatus();
   drawHud();
+  maybeAutoFallbackToMouthwatch();
 }
 function setMouthwatchVisible(visible) {
   state.mouthwatchVisible = Boolean(visible);
@@ -1622,6 +1681,7 @@ function setMouthwatchVisible(visible) {
   }
 }
 function toggleMouthwatch() {
+  markManualViewChoice();
   if (!isThetaLayout()) {
     state.feed = 'theta';
     state.parallel = false;
@@ -1638,6 +1698,7 @@ function toggleMouthwatch() {
   setMouthwatchVisible(!state.mouthwatchVisible);
 }
 function toggleFeed() {
+  markManualViewChoice();
   state.feed = state.feed === 'theta' ? 'mouthwatch' : 'theta';
   state.parallel = false;
   if (state.preview360) {
@@ -1651,6 +1712,7 @@ function toggleFeed() {
   showToast(message, 'info', 2400);
 }
 function toggleParallel() {
+  markManualViewChoice();
   state.parallel = !state.parallel;
   if (state.parallel && state.preview360) {
     state.preview360 = false;
@@ -1940,13 +2002,14 @@ async function connect() {
 
   const gen = ++state.generation;
   state.connecting = true;
+  if (!state.streamVisible && !state.thetaNoSignalSince) state.thetaNoSignalSince = Date.now();
   state.attempts += 1;
   state.stalled = false;
   state.stallReconnect = false;
   state.whepSetupMs = null;
   updateReconnects();
 
-  setStatus('connecting', 'Conectando…', 'CONECTANDO');
+  refreshStatus();
   setQuality({ key: 'unknown', label: 'Conectando', score: null, hint: 'Estableciendo el enlace con la cámara remota.' });
   showPlaceholder('Conectando con la cámara', 'Estableciendo el enlace WebRTC con MediaMTX…', { spinner: true, retry: false, mode: 'connecting' });
   resetVideo();
@@ -2220,7 +2283,7 @@ function markDisconnected(reason) {
 
 function refreshStatus() {
   if (isMouthwatchOnly()) {
-    const live = state.aux.connected && isMouthwatchVideoReady();
+    const live = isMouthwatchLive();
     if (live) { setStatus('live', 'MouthWatch en vivo', 'MW EN VIVO'); return; }
     if (state.aux.connecting) { setStatus('connecting', 'Conectando MouthWatch…', 'CONECTANDO'); return; }
     if (state.aux.connected) { setStatus('warn', 'MouthWatch conectado · esperando video', 'MW SIN VIDEO'); return; }
@@ -2234,7 +2297,7 @@ function refreshStatus() {
   }
   if (state.parallel) {
     const thetaLive = state.connected && state.streamVisible;
-    const mwLive = state.aux.connected && isMouthwatchVideoReady();
+    const mwLive = isMouthwatchLive();
     if (thetaLive && mwLive) { setStatus('live', 'En vivo · Theta + MouthWatch', 'EN VIVO'); return; }
     if (thetaLive) { setStatus('warn', 'Theta en vivo · MouthWatch sin señal', 'THETA EN VIVO'); return; }
     if (mwLive) { setStatus('warn', 'MouthWatch en vivo · Theta sin señal', 'MW EN VIVO'); return; }
@@ -2275,6 +2338,7 @@ function scheduleRetry(reason, kind = 'warn') {
   refreshStatus();
   drawHud();
   drawNoSignal();
+  maybeAutoFallbackToMouthwatch();
 
   state.retryTimer = setTimeout(() => {
     state.retryTimer = null;
@@ -2284,17 +2348,23 @@ function scheduleRetry(reason, kind = 'warn') {
 }
 
 function reconnectNow(reason = 'Reconexión manual solicitada.') {
-  state.generation += 1;
-  clearTimeout(state.retryTimer);
-  state.retryTimer = null;
-  state.nextRetryAt = null;
-  state.retryAttempt = 0;
-  cleanupPeer(true);
-  resetVideo();
-  markDisconnected(null);
-  state.connecting = false;
-  addEvent(reason, 'info');
-  connect();
+  const fallbackSuppressed = state.autoFallbackSuppressed;
+  state.autoFallbackSuppressed = true;
+  try {
+    state.generation += 1;
+    clearTimeout(state.retryTimer);
+    state.retryTimer = null;
+    state.nextRetryAt = null;
+    state.retryAttempt = 0;
+    cleanupPeer(true);
+    resetVideo();
+    markDisconnected(null);
+    state.connecting = false;
+    addEvent(reason, 'info');
+    connect();
+  } finally {
+    state.autoFallbackSuppressed = fallbackSuppressed;
+  }
 }
 
 /* ── Telemetría WebRTC ──────────────────────────────────────── */
@@ -2729,6 +2799,7 @@ async function tick() {
   }
 
   refreshStatus();
+  maybeAutoFallbackToMouthwatch();
 
   if (state.connected && !state.hasVideo && state.connectedAt && now - state.connectedAt > 16000 && !state.stallReconnect) {
     state.stallReconnect = true;

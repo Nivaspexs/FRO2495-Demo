@@ -11,7 +11,7 @@ Demo para FRO2495. Prueba de latencia con WebRTC usando una cámara 360° Ricoh 
 - `nginx`: sirve la página por HTTPS y hace de proxy WHEP hacia MediaMTX (`127.0.0.1:8889`).
 - `reloj.py`: reloj con milisegundos para medir latencia vidrio a vidrio.
 
-En la interfaz, el botón **MouthWatch** de la barra de controles (modo 2D) o del HUD flotante (modo VR) activa un cuadro con la transmisión `mouthwatch`. Los botones **Solo MouthWatch** y **Paralelo** permiten alternar la vista exclusiva entre ambas cámaras o mostrar las dos transmisiones lado a lado en un layout plano. Las dos transmisiones se mantienen conectadas aunque no estén visibles.
+En la interfaz, el botón **MouthWatch** de la barra de controles (modo 2D) o del HUD flotante (modo VR) activa un cuadro con la transmisión `mouthwatch`. Los botones **Solo MouthWatch** y **Paralelo** permiten alternar la vista exclusiva entre ambas cámaras o mostrar las dos transmisiones lado a lado en un layout plano. Las dos transmisiones se mantienen conectadas aunque no estén visibles. Si Theta deja de transmitir y MouthWatch está en vivo, la vista principal pasa automáticamente a MouthWatch para no quedar sin imagen.
 
 # Local
 
@@ -46,6 +46,7 @@ En la interfaz, el botón **MouthWatch** de la barra de controles (modo 2D) o de
 - **Solo MouthWatch / Solo Theta:** alterna la vista exclusiva entre ambos streams. Es un botón de ida y vuelta: si estás viendo MouthWatch, el mismo control dice **Solo Theta**.
 - **Paralelo:** muestra Theta y MouthWatch lado a lado en un layout plano, tanto en la vista 2D como en dos paneles dentro de VR. Vuelve a pulsar **Cerrar paralelo** para regresar a la vista exclusiva seleccionada.
 - **MouthWatch:** mantiene el modo de cuadro flotante (PiP en 2D y panel junto al HUD en VR). Solo aplica a la vista exclusiva de Theta; si se pulsa desde otro modo, vuelve a Theta y activa el cuadro.
+- **Fallback automático:** si Theta queda sin enlace o sin cuadros y MouthWatch está en vivo, la vista exclusiva cambia automáticamente a **Solo MouthWatch** (de inmediato ante un fallo de enlace, o tras 5 s sin cuadros). Al recuperarse Theta, vuelve a la vista principal, salvo que se haya elegido otra vista manualmente. El botón **Solo Theta** permite mantener la vista de Theta aunque no transmita, suspendiendo el fallback durante esa interrupción.
 - MouthWatch se reproduce sin audio; el audio disponible corresponde al stream principal `theta`.
 
 ## Streams paralelos
